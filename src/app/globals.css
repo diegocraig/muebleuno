@@ -1,0 +1,29 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --rojo-principal: #C0272D;
+  --rojo-hover: #A01E23;
+  --rojo-suave: #F5E0E0;
+  --gris-oscuro: #1E1E1E;
+  --gris-medio: #4A4A4A;
+  --gris-claro: #B0B0B0;
+  --gris-fondo: #F4F4F4;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-barlow), sans-serif;
+  color: var(--gris-oscuro);
+  background: #fff;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}

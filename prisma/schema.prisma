@@ -1,0 +1,98 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Categoria {
+  id             Int            @id @default(autoincrement())
+  nombre         String
+  slug           String         @unique
+  imagen         String?
+  orden          Int            @default(0)
+  activa         Boolean        @default(true)
+  productos      Producto[]
+  subcategorias  Subcategoria[]
+  creadaEn       DateTime       @default(now())
+}
+
+model Subcategoria {
+  id          Int        @id @default(autoincrement())
+  nombre      String
+  slug        String     @unique
+  imagen      String?
+  orden       Int        @default(0)
+  activa      Boolean    @default(true)
+  categoriaId Int
+  categoria   Categoria  @relation(fields: [categoriaId], references: [id])
+  productos   Producto[]
+  creadaEn    DateTime   @default(now())
+}
+
+model Producto {
+  id              Int           @id @default(autoincrement())
+  nombre          String
+  slug            String        @unique
+  descripcion     String?
+  precio          Float
+  precioOferta    Float?
+  imagenes        String
+  categoriaId     Int
+  categoria       Categoria     @relation(fields: [categoriaId], references: [id])
+  subcategoriaId  Int?
+  subcategoria    Subcategoria? @relation(fields: [subcategoriaId], references: [id])
+  stock           Int           @default(0)
+  destacado       Boolean       @default(false)
+  novedad         Boolean       @default(false)
+  enPromocion     Boolean       @default(false)
+  activo          Boolean       @default(true)
+  creadoEn        DateTime      @default(now())
+  actualizadoEn   DateTime      @updatedAt
+}
+
+model Pedido {
+  id       Int      @id @default(autoincrement())
+  nombre   String
+  email    String
+  telefono String
+  items    String
+  total    Float
+  estado   String   @default("pendiente")
+  notas    String?
+  creadoEn DateTime @default(now())
+}
+
+model SliderItem {
+  id        Int     @id @default(autoincrement())
+  imagen    String
+  titulo    String?
+  subtitulo String?
+  linkUrl   String?
+  orden     Int     @default(0)
+  activo    Boolean @default(true)
+}
+
+model Configuracion {
+  id                Int     @id @default(1)
+  nombreTienda      String  @default("Mueble UNO")
+  telefono          String?
+  whatsapp          String?
+  email             String?
+  direccion         String?
+  instagram         String?
+  facebook          String?
+  textoBanner       String?
+  sliderIntervalo   Int     @default(5)
+  sliderTransicion  String  @default("fade")
+}
+
+model Usuario {
+  id       Int    @id @default(autoincrement())
+  email    String @unique
+  password String
+  nombre   String
+  rol      String @default("admin")
+}
