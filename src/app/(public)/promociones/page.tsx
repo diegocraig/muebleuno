@@ -1,6 +1,8 @@
 import { prisma } from '@/lib/prisma'
 import ProductoGrid from '@/components/public/ProductoGrid'
 
+export const dynamic = 'force-dynamic'
+
 export default async function PromocionesPage() {
   const productos = await prisma.producto.findMany({
     where: { activo: true, enPromocion: true },

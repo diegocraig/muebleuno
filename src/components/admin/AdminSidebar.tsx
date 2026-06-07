@@ -2,15 +2,18 @@
 import Link from 'next/link'
 import NextImage from 'next/image'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, Package, Layers, FolderTree, ShoppingBag, Image, Settings, LogOut } from 'lucide-react'
+import { LayoutDashboard, Package, Layers, FolderTree, ShoppingBag, Image, Settings, LogOut, Star, BarChart2, Ruler } from 'lucide-react'
 
 
 const links = [
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/admin/productos', label: 'Productos', icon: Package },
+  { href: '/admin/stock', label: 'Stock', icon: BarChart2 },
+  { href: '/admin/medida', label: 'A Medida', icon: Ruler },
   { href: '/admin/categorias', label: 'Categorías', icon: Layers },
   { href: '/admin/subcategorias', label: 'Subcategorías', icon: FolderTree },
   { href: '/admin/pedidos', label: 'Pedidos', icon: ShoppingBag },
+  { href: '/admin/reviews', label: 'Reseñas', icon: Star },
   { href: '/admin/slider', label: 'Slider', icon: Image },
   { href: '/admin/configuracion', label: 'Configuración', icon: Settings },
 ]
@@ -21,7 +24,9 @@ export default function AdminSidebar() {
   return (
     <aside className="w-56 bg-gris-oscuro text-white flex flex-col min-h-screen shrink-0">
       <div className="px-6 py-5 border-b border-white/10">
-        <NextImage src="/muebleuno/logo.png" alt="Mueble UNO" width={130} height={28} className="h-7 w-auto brightness-0 invert mb-1" />
+        <a href="/muebleuno" target="_blank" rel="noopener noreferrer" title="Ver sitio">
+          <NextImage src="/muebleuno/logo.png" alt="Mueble UNO" width={130} height={28} className="h-7 w-auto brightness-0 invert mb-1 hover:opacity-75 transition-opacity" />
+        </a>
         <p className="text-xs text-gris-claro mt-0.5">Admin Panel</p>
       </div>
       <nav className="flex-1 px-3 py-4 space-y-1">

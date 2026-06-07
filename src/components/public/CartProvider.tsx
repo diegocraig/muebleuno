@@ -1,5 +1,7 @@
 'use client'
-import { createContext, useContext, useState, useCallback } from 'react'
+import { createContext, useContext, useState, useCallback, useEffect } from 'react'
+
+const STORAGE_KEY = 'muebleuno_cart'
 
 interface CartItem {
   productoId: number
@@ -30,8 +32,20 @@ export function useCart() {
 }
 
 export default function CartProvider({ children }: { children: React.ReactNode }) {
-  const [items, setItems] = useState<CartItem[]>([])
+  const [items, setItems] = useState<CartItem[]>(() => {
+    if (typeof window === 'undefined') return []
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY)
+      return saved ? JSON.parse(saved) : []
+    } catch {
+      return []
+    }
+  })
   const [isOpen, setIsOpen] = useState(false)
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(items))
+  }, [items])
 
   const addItem = useCallback((item: Omit<CartItem, 'cantidad'>) => {
     setItems(prev => {

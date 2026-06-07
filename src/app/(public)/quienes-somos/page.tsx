@@ -82,14 +82,14 @@ export default function QuienesSomosPage() {
       </div>
 
       {/* CTA */}
-      <div className="text-center">
+      <div className="text-center mt-10">
         <p className="text-gris-medio mb-5">¿Querés ver nuestros productos o hacer una consulta?</p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Link href="/productos"
             className="inline-block bg-rojo-principal hover:bg-rojo-hover text-white font-bold px-8 py-3 rounded-xl transition-colors">
             Ver Catálogo
           </Link>
-          <a href="https://wa.me/5491126484463?text=Hola, quiero consultar sobre sus productos"
+          <a href="https://wa.me/5491173670283?text=Hola, quiero consultar sobre sus productos"
             target="_blank" rel="noopener noreferrer"
             className="inline-flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-bold px-8 py-3 rounded-xl transition-colors">
             <MessageCircle className="w-5 h-5" /> Consultanos

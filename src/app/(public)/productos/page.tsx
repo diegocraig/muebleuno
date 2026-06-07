@@ -1,11 +1,12 @@
 import { prisma } from '@/lib/prisma'
 import ProductoGrid from '@/components/public/ProductoGrid'
 import FiltroSidebar from '@/components/public/FiltroSidebar'
+import OrdenSelector from '@/components/public/OrdenSelector'
 
 export const dynamic = 'force-dynamic'
 
 interface PageProps {
-  searchParams: Promise<{ categoria?: string; precio_min?: string; precio_max?: string; oferta?: string; novedad?: string; page?: string; order?: string }>
+  searchParams: Promise<{ categoria?: string; precio_min?: string; precio_max?: string; oferta?: string; novedad?: string; page?: string; order?: string; buscar?: string }>
 }
 
 export default async function ProductosPage({ searchParams }: PageProps) {
@@ -17,6 +18,10 @@ export default async function ProductosPage({ searchParams }: PageProps) {
   if (params.categoria) where.categoria = { slug: params.categoria }
   if (params.oferta === 'true') where.enPromocion = true
   if (params.novedad === 'true') where.novedad = true
+  if (params.buscar) where.OR = [
+    { nombre: { contains: params.buscar } },
+    { descripcion: { contains: params.buscar } },
+  ]
   if (params.precio_min || params.precio_max) {
     where.precio = {}
     if (params.precio_min) (where.precio as Record<string, number>).gte = parseFloat(params.precio_min)
@@ -41,7 +46,9 @@ export default async function ProductosPage({ searchParams }: PageProps) {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8">Catálogo de Productos</h1>
+      <h1 className="text-3xl font-bold mb-8">
+        {params.buscar ? <>Resultados para &ldquo;{params.buscar}&rdquo;</> : 'Catálogo de Productos'}
+      </h1>
       <div className="flex gap-8">
         <aside className="w-64 shrink-0 hidden lg:block">
           <FiltroSidebar categorias={categorias} searchParams={params} />
@@ -49,15 +56,7 @@ export default async function ProductosPage({ searchParams }: PageProps) {
         <div className="flex-1">
           <div className="flex justify-between items-center mb-4">
             <p className="text-gris-medio">{total} productos encontrados</p>
-            <select
-              className="border rounded px-3 py-1.5 text-sm"
-              defaultValue={params.order ?? ''}
-            >
-              <option value="">Más nuevos</option>
-              <option value="precio_asc">Precio: menor a mayor</option>
-              <option value="precio_desc">Precio: mayor a menor</option>
-              <option value="nombre">Nombre A-Z</option>
-            </select>
+            <OrdenSelector current={params.order ?? ''} />
           </div>
           <ProductoGrid productos={productos} />
           {pages > 1 && (

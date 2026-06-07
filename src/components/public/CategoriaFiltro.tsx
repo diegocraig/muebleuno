@@ -5,7 +5,7 @@ import ProductoGrid from './ProductoGrid'
 interface Subcategoria { id: number; nombre: string; slug: string }
 interface Producto {
   id: number; nombre: string; slug: string; precio: number; precioOferta?: number | null
-  imagenes: string; novedad: boolean; enPromocion: boolean; destacado: boolean
+  imagenes: string; novedad: boolean; enPromocion: boolean; destacado: boolean; stock: number
   categoria: { nombre: string; slug: string }
   subcategoriaId?: number | null
 }

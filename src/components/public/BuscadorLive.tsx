@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Search } from 'lucide-react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { formatPrice } from '@/lib/utils'
 import Image from 'next/image'
 
@@ -17,6 +18,14 @@ export default function BuscadorLive() {
   const [loading, setLoading] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const router = useRouter()
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && query.trim().length >= 2) {
+      setOpen(false)
+      router.push(`/productos?buscar=${encodeURIComponent(query.trim())}`)
+    }
+  }
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -49,6 +58,7 @@ export default function BuscadorLive() {
           placeholder="Buscar productos..."
           value={query}
           onChange={e => handleChange(e.target.value)}
+          onKeyDown={handleKeyDown}
           className="text-sm outline-none w-full bg-transparent"
         />
       </div>

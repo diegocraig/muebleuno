@@ -11,12 +11,13 @@ interface Producto {
   imagenes: string; stock: number; destacado: boolean; novedad: boolean
   enPromocion: boolean; activo: boolean; categoriaId: number; categoria: Categoria
   subcategoriaId?: number | null; subcategoria?: Subcategoria | null
-  descripcion?: string | null
+  descripcion?: string | null; datosUtiles?: string | null
+  infoEmbalaje?: string | null; garantia?: string | null
 }
 
 const emptyForm = {
-  nombre: '', slug: '', descripcion: '', precio: '', precioOferta: '',
-  categoriaId: '', subcategoriaId: '',
+  nombre: '', slug: '', descripcion: '', datosUtiles: '', infoEmbalaje: '', garantia: '',
+  precio: '', precioOferta: '', categoriaId: '', subcategoriaId: '',
   stock: '0', destacado: false, novedad: false, enPromocion: false, activo: true,
   imagenes: [] as string[],
 }
@@ -51,6 +52,7 @@ export default function ProductosAdmin({
   const openEdit = (p: Producto) => {
     setForm({
       nombre: p.nombre, slug: p.slug, descripcion: p.descripcion ?? '',
+      datosUtiles: p.datosUtiles ?? '', infoEmbalaje: p.infoEmbalaje ?? '', garantia: p.garantia ?? '',
       precio: String(p.precio), precioOferta: p.precioOferta ? String(p.precioOferta) : '',
       categoriaId: String(p.categoriaId),
       subcategoriaId: p.subcategoriaId ? String(p.subcategoriaId) : '',
@@ -215,10 +217,49 @@ export default function ProductosAdmin({
                     className="w-full border rounded-lg px-3 py-2 text-sm" />
                 </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Descripción</label>
-                <textarea rows={3} value={form.descripcion} onChange={e => setForm(f => ({ ...f, descripcion: e.target.value }))}
-                  className="w-full border rounded-lg px-3 py-2 text-sm resize-none" />
+              {/* Ficha técnica */}
+              <div className="border rounded-xl p-4 space-y-4 bg-gris-fondo/40">
+                <p className="text-xs font-bold uppercase tracking-widest text-gris-medio">Ficha técnica del producto</p>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">Descripción</label>
+                  <p className="text-xs text-gris-claro mb-1.5">Texto libre con las características generales del producto. Podés usar párrafos separados con una línea en blanco.</p>
+                  <textarea rows={4} value={form.descripcion}
+                    onChange={e => setForm(f => ({ ...f, descripcion: e.target.value }))}
+                    placeholder={"Rack de TV fabricado en melamina de alta calidad...\n\nCuenta con puertas con pistón a gas y bisagras de cierre suave."}
+                    className="w-full border rounded-lg px-3 py-2 text-sm" />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">Datos útiles</label>
+                  <p className="text-xs text-gris-claro mb-1.5">
+                    Usá grupos separados por línea en blanco. La primera línea de cada grupo es el título (ej: &ldquo;Materiales&rdquo;) y las siguientes empiezan con <code className="bg-white px-1 rounded">-</code> para ser bullets.
+                  </p>
+                  <textarea rows={8} value={form.datosUtiles}
+                    onChange={e => setForm(f => ({ ...f, datosUtiles: e.target.value }))}
+                    placeholder={"Materiales\n- Estructura en melamina 25mm\n- Puertas en melamina 15mm\n\nMedidas del mueble\n- Ancho: 180 cm\n- Profundidad: 36,6 cm\n- Altura: 40 cm\n\nMedidas internas\n- Altura útil: 32 cm"}
+                    className="w-full border rounded-lg px-3 py-2 text-sm font-mono" />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">Información del embalaje</label>
+                  <p className="text-xs text-gris-claro mb-1.5">
+                    Indicá si viene armado o desarmado, medidas del bulto y peso. Podés usar bullets con <code className="bg-white px-1 rounded">-</code>.
+                  </p>
+                  <textarea rows={5} value={form.infoEmbalaje}
+                    onChange={e => setForm(f => ({ ...f, infoEmbalaje: e.target.value }))}
+                    placeholder={"- Producto entregado desarmado en caja\n- Se entrega con QR de manual de armado\n\nMedidas del bulto\n- Largo: 181 cm / Ancho: 41 cm / Alto: 13 cm\n- Peso: 34 kg"}
+                    className="w-full border rounded-lg px-3 py-2 text-sm font-mono" />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">Garantía</label>
+                  <p className="text-xs text-gris-claro mb-1.5">Describí la cobertura de garantía: duración, qué incluye y cómo contactarse ante un problema.</p>
+                  <textarea rows={3} value={form.garantia}
+                    onChange={e => setForm(f => ({ ...f, garantia: e.target.value }))}
+                    placeholder={"12 meses de garantía por defectos de fabricación. Ante cualquier inconveniente, contactanos por WhatsApp para coordinar el servicio técnico."}
+                    className="w-full border rounded-lg px-3 py-2 text-sm" />
+                </div>
               </div>
 
               <ImageUploader context="producto" images={form.imagenes} onChange={imgs => setForm(f => ({ ...f, imagenes: imgs }))} />

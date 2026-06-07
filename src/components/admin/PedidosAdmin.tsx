@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { MessageCircle, ChevronDown } from 'lucide-react'
+import { MessageCircle, Star } from 'lucide-react'
 import { formatPrice } from '@/lib/utils'
 
 interface PedidoItem { productoId: number; nombre: string; precio: number; cantidad: number }
@@ -17,10 +17,107 @@ const ESTADO_COLORS: Record<string, string> = {
   cancelado: 'bg-red-100 text-red-700',
 }
 
+function ModalReview({ pedido, onClose }: { pedido: Pedido; onClose: () => void }) {
+  const items = JSON.parse(pedido.items) as PedidoItem[]
+  const [form, setForm] = useState({
+    autor: pedido.nombre, ciudad: '', texto: '', rating: 5,
+    productoId: items[0]?.productoId ? String(items[0].productoId) : '',
+  })
+  const [saving, setSaving] = useState(false)
+  const [done, setDone] = useState(false)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSaving(true)
+    await fetch('/muebleuno/api/reviews', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...form, activa: true }),
+    })
+    setSaving(false)
+    setDone(true)
+    setTimeout(onClose, 1500)
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
+        <div className="flex justify-between items-center px-6 py-4 border-b">
+          <h2 className="font-bold text-lg">Cargar reseña del pedido #{pedido.id}</h2>
+          <button onClick={onClose} className="text-gris-claro hover:text-gris-oscuro text-xl">✕</button>
+        </div>
+        {done ? (
+          <div className="px-6 py-10 text-center">
+            <p className="text-3xl mb-2">✅</p>
+            <p className="font-semibold">Reseña guardada</p>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="px-6 py-4 space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium mb-1">Autor</label>
+                <input value={form.autor} onChange={e => setForm(f => ({ ...f, autor: e.target.value }))}
+                  className="w-full border rounded-lg px-3 py-2 text-sm" required />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Ciudad</label>
+                <input value={form.ciudad} onChange={e => setForm(f => ({ ...f, ciudad: e.target.value }))}
+                  className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Ej: Corrientes" />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">Valoración</label>
+              <div className="flex gap-1">
+                {[1,2,3,4,5].map(n => (
+                  <button key={n} type="button" onClick={() => setForm(f => ({ ...f, rating: n }))}>
+                    <Star className={`w-6 h-6 ${n <= form.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} />
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Producto reseñado</label>
+              <select value={form.productoId} onChange={e => setForm(f => ({ ...f, productoId: e.target.value }))}
+                className="w-full border rounded-lg px-3 py-2 text-sm">
+                <option value="">— Reseña general del negocio —</option>
+                {items.map(item => (
+                  <option key={item.productoId} value={item.productoId}>{item.nombre}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Reseña</label>
+              <textarea required rows={4} value={form.texto}
+                onChange={e => setForm(f => ({ ...f, texto: e.target.value }))}
+                className="w-full border rounded-lg px-3 py-2 text-sm resize-none"
+                placeholder="Escribí la opinión del cliente..." />
+            </div>
+
+            <div className="flex gap-3 pt-1">
+              <button type="submit" disabled={saving}
+                className="flex-1 bg-rojo-principal hover:bg-rojo-hover disabled:opacity-60 text-white font-bold py-2.5 rounded-lg">
+                {saving ? 'Guardando...' : 'Guardar reseña'}
+              </button>
+              <button type="button" onClick={onClose}
+                className="px-5 border rounded-lg hover:bg-gris-fondo text-sm">
+                Cancelar
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function PedidosAdmin({ pedidos: initial }: { pedidos: Pedido[] }) {
   const [pedidos, setPedidos] = useState(initial)
   const [selected, setSelected] = useState<Pedido | null>(null)
   const [filtroEstado, setFiltroEstado] = useState('')
+  const [reviewPedido, setReviewPedido] = useState<Pedido | null>(null)
 
   const filtrados = pedidos.filter(p => !filtroEstado || p.estado === filtroEstado)
 
@@ -124,10 +221,20 @@ export default function PedidosAdmin({ pedidos: initial }: { pedidos: Pedido[] }
               >
                 <MessageCircle className="w-4 h-4" /> WhatsApp
               </a>
+              <button
+                onClick={() => setReviewPedido(selected)}
+                className="flex items-center gap-1 bg-yellow-400 hover:bg-yellow-500 text-yellow-900 text-sm font-semibold px-3 py-2 rounded-lg"
+              >
+                <Star className="w-4 h-4" /> Reseña
+              </button>
             </div>
           </div>
         )}
       </div>
+
+      {reviewPedido && (
+        <ModalReview pedido={reviewPedido} onClose={() => setReviewPedido(null)} />
+      )}
     </div>
   )
 }

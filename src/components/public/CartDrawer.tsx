@@ -89,18 +89,20 @@ export default function CartDrawer() {
               </div>
 
               {!showForm ? (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <a
-                    href={`https://wa.me/5491126484463?text=${encodeURIComponent('Hola! Mi carrito:\n' + waMessage)}`}
+                    href={`https://wa.me/5491173670283?text=${encodeURIComponent('Hola Facundo! Mi carrito:\n' + waMessage)}`}
                     target="_blank" rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-lg transition-colors"
+                    className="flex items-center justify-center gap-2 w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3.5 rounded-lg transition-colors text-base shadow-sm"
                   >
-                    <MessageCircle className="w-4 h-4" /> Enviar por WhatsApp
+                    <MessageCircle className="w-5 h-5" /> Enviar pedido por WhatsApp
                   </a>
-                  <button onClick={() => setShowForm(true)}
-                    className="w-full bg-rojo-principal hover:bg-rojo-hover text-white font-bold py-3 rounded-lg transition-colors">
-                    Solicitar pedido
-                  </button>
+                  <div className="text-center">
+                    <button onClick={() => setShowForm(true)}
+                      className="text-xs text-gris-medio hover:text-gris-oscuro underline underline-offset-2 transition-colors">
+                      Preferís que te contactemos? Dejá tus datos
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <form onSubmit={handlePedido} className="space-y-2">

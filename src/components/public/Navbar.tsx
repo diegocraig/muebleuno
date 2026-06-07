@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { ShoppingCart, Menu, X, Phone, ChevronRight, ChevronDown } from 'lucide-react'
+import { ShoppingCart, Menu, X, Phone, ChevronRight, ChevronDown, Clock } from 'lucide-react'
 import { useCart } from './CartProvider'
 import CartDrawer from './CartDrawer'
 import BuscadorLive from './BuscadorLive'
@@ -42,14 +42,14 @@ export default function Navbar() {
       {/* Top bar */}
       <div className="bg-gris-oscuro text-white text-sm py-1.5 px-4">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <a href="https://wa.me/5491173670283?text=Hola, quiero consultar sobre sus productos" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:text-rojo-suave transition-colors">
-              <Phone className="w-3.5 h-3.5" /> Llamanos
-            </a>
+          <a href="https://wa.me/5491173670283?text=Hola, quiero consultar sobre sus productos" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:text-rojo-suave transition-colors">
+            <Phone className="w-3.5 h-3.5" /> Llamanos
+          </a>
+          <div className="hidden md:flex items-center gap-1.5 opacity-80">
+            <Clock className="w-3.5 h-3.5 shrink-0" />
+            <span>Lun a Jue 8-12 / 14-17 &nbsp;·&nbsp; Vie 8-12 / 14-18</span>
           </div>
-          <div className="flex items-center gap-4">
-            <span className="opacity-70">Envíos a todo el país</span>
-          </div>
+          <span className="opacity-70">Envíos a todo el país</span>
         </div>
       </div>
 
@@ -113,6 +113,7 @@ export default function Navbar() {
 
             <Link href="/novedades" className="font-medium hover:text-rojo-principal transition-colors">Novedades</Link>
             <Link href="/promociones" className="font-medium hover:text-rojo-principal transition-colors">Promociones</Link>
+            <Link href="/muebles-a-medida" className="font-medium hover:text-rojo-principal transition-colors whitespace-nowrap">Muebles a Medida</Link>
             <Link href="/quienes-somos" className="font-medium hover:text-rojo-principal transition-colors">Quiénes Somos</Link>
             <Link href="/contacto" className="font-medium hover:text-rojo-principal transition-colors">Contacto</Link>
           </nav>
@@ -174,6 +175,8 @@ export default function Navbar() {
             <div className="pt-2 space-y-1 border-t mt-2">
               <Link href="/novedades" className="block py-2 hover:text-rojo-principal" onClick={() => setMenuOpen(false)}>Novedades</Link>
               <Link href="/promociones" className="block py-2 hover:text-rojo-principal" onClick={() => setMenuOpen(false)}>Promociones</Link>
+              <Link href="/muebles-a-medida" className="block py-2 hover:text-rojo-principal font-semibold" onClick={() => setMenuOpen(false)}>Muebles a Medida</Link>
+              <Link href="/quienes-somos" className="block py-2 hover:text-rojo-principal" onClick={() => setMenuOpen(false)}>Quiénes Somos</Link>
               <Link href="/contacto" className="block py-2 hover:text-rojo-principal" onClick={() => setMenuOpen(false)}>Contacto</Link>
             </div>
           </div>

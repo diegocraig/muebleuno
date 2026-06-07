@@ -1,6 +1,20 @@
+'use client'
+import { useState } from 'react'
 import { MapPin, Phone, MessageCircle, Clock } from 'lucide-react'
 
 export default function ContactoPage() {
+  const [form, setForm] = useState({ nombre: '', email: '', telefono: '', mensaje: '' })
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    const texto = `Hola Facundo! Te escribo desde el sitio web de Mueble UNO.\n\n` +
+      `Nombre: ${form.nombre}\n` +
+      (form.email ? `Email: ${form.email}\n` : '') +
+      (form.telefono ? `Teléfono: ${form.telefono}\n` : '') +
+      `\nMensaje: ${form.mensaje}`
+    window.open(`https://wa.me/5491173670283?text=${encodeURIComponent(texto)}`, '_blank')
+  }
+
   return (
     <div className="max-w-5xl mx-auto px-4 py-12">
       <h1 className="text-4xl font-bold mb-8 text-rojo-principal">Contacto</h1>
@@ -95,25 +109,55 @@ export default function ContactoPage() {
 
         <div>
           <h2 className="text-2xl font-semibold mb-6">Envianos un Mensaje</h2>
-          <form className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Nombre</label>
-              <input type="text" className="w-full border rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-rojo-principal" placeholder="Tu nombre" />
+              <label className="block text-sm font-medium mb-1">Nombre *</label>
+              <input
+                type="text"
+                required
+                value={form.nombre}
+                onChange={e => setForm(p => ({ ...p, nombre: e.target.value }))}
+                className="w-full border rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-rojo-principal"
+                placeholder="Tu nombre"
+              />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Email</label>
-              <input type="email" className="w-full border rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-rojo-principal" placeholder="tu@email.com" />
+              <input
+                type="email"
+                value={form.email}
+                onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
+                className="w-full border rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-rojo-principal"
+                placeholder="tu@email.com"
+              />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Teléfono</label>
-              <input type="tel" className="w-full border rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-rojo-principal" placeholder="(011) ..." />
+              <input
+                type="tel"
+                value={form.telefono}
+                onChange={e => setForm(p => ({ ...p, telefono: e.target.value }))}
+                className="w-full border rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-rojo-principal"
+                placeholder="(011) ..."
+              />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Mensaje</label>
-              <textarea rows={4} className="w-full border rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-rojo-principal resize-none" placeholder="¿En qué te podemos ayudar?" />
+              <label className="block text-sm font-medium mb-1">Mensaje *</label>
+              <textarea
+                required
+                rows={4}
+                value={form.mensaje}
+                onChange={e => setForm(p => ({ ...p, mensaje: e.target.value }))}
+                className="w-full border rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-rojo-principal resize-none"
+                placeholder="¿En qué te podemos ayudar?"
+              />
             </div>
-            <button type="submit" className="w-full bg-rojo-principal hover:bg-rojo-hover text-white font-semibold py-3 rounded-lg transition-colors">
-              Enviar Mensaje
+            <button
+              type="submit"
+              className="w-full flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-semibold py-3 rounded-lg transition-colors"
+            >
+              <MessageCircle className="w-4 h-4" />
+              Enviar por WhatsApp
             </button>
           </form>
 

@@ -45,12 +45,28 @@ model Producto {
   subcategoriaId  Int?
   subcategoria    Subcategoria? @relation(fields: [subcategoriaId], references: [id])
   stock           Int           @default(0)
+  datosUtiles     String?
+  infoEmbalaje    String?
+  garantia        String?
   destacado       Boolean       @default(false)
   novedad         Boolean       @default(false)
   enPromocion     Boolean       @default(false)
   activo          Boolean       @default(true)
   creadoEn        DateTime      @default(now())
   actualizadoEn   DateTime      @updatedAt
+  reviews         Review[]
+}
+
+model Review {
+  id         Int       @id @default(autoincrement())
+  autor      String
+  ciudad     String?
+  texto      String
+  rating     Int       @default(5)
+  productoId Int?
+  producto   Producto? @relation(fields: [productoId], references: [id], onDelete: SetNull)
+  activa     Boolean   @default(true)
+  creadaEn   DateTime  @default(now())
 }
 
 model Pedido {
@@ -95,4 +111,55 @@ model Usuario {
   password String
   nombre   String
   rol      String @default("admin")
+}
+
+model MedidaConfig {
+  id              Int    @id @default(1)
+  heroBadge       String @default("Servicio especializado")
+  heroTitulo      String @default("Muebles a Medida para cada espacio")
+  heroDescripcion String @default("Diseñamos y fabricamos placards, cocinas, escritorios y soluciones de amoblamiento adaptadas a cada proyecto.")
+  whatsappMsg     String @default("Hola, quiero consultar sobre muebles a medida")
+  edificiosTitulo String @default("Proveedores para desarrolladores inmobiliarios")
+  edificiosDesc   String @default("Equipamos unidades completas en serie: cocinas, placards y vanitorios con la misma calidad en cada piso.")
+  edificiosItems  String @default("[]")
+  stat1Numero     String @default("+200")
+  stat1Texto      String @default("unidades equipadas en proyectos de edificios")
+  stat2Numero     String @default("15+")
+  stat2Texto      String @default("años de experiencia en fabricación")
+  stat3Numero     String @default("100%")
+  stat3Texto      String @default("fabricación propia, sin intermediarios")
+  ctaTitulo       String @default("¿Tenés un proyecto en mente?")
+  ctaDescripcion  String @default("Contanos qué necesitás y te asesoramos sin cargo. Podemos visitarte, tomar medidas y preparar un presupuesto detallado sin compromiso.")
+}
+
+model MedidaServicio {
+  id          Int     @id @default(autoincrement())
+  titulo      String
+  descripcion String
+  items       String
+  orden       Int     @default(0)
+  activo      Boolean @default(true)
+}
+
+model MedidaPaso {
+  id     Int    @id @default(autoincrement())
+  numero String
+  titulo String
+  texto  String
+  orden  Int    @default(0)
+}
+
+model MedidaMaterial {
+  id      Int    @id @default(autoincrement())
+  nombre  String
+  detalle String
+  orden   Int    @default(0)
+}
+
+model MedidaFoto {
+  id     Int     @id @default(autoincrement())
+  imagen String
+  titulo String?
+  orden  Int     @default(0)
+  activo Boolean @default(true)
 }
