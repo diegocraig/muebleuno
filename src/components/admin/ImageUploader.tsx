@@ -84,7 +84,7 @@ export default function ImageUploader({ images, onChange, context = 'producto' }
       const fd = new FormData()
       fd.append('file', file)
       try {
-        const res = await fetch(`/muebleuno/api/upload?ctx=${context}`, { method: 'POST', body: fd })
+        const res = await fetch(`/api/upload?ctx=${context}`, { method: 'POST', body: fd })
         const data = await res.json()
         if (data.url) {
           uploaded.push(data.url)

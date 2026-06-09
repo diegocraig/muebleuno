@@ -43,7 +43,7 @@ export default function ReviewsAdmin({ reviews: initial, productos }: { reviews:
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    const url = editing ? `/muebleuno/api/reviews/${editing}` : '/muebleuno/api/reviews'
+    const url = editing ? `/api/reviews/${editing}` : '/api/reviews'
     const method = editing ? 'PUT' : 'POST'
     const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
     const data = await res.json()
@@ -57,12 +57,12 @@ export default function ReviewsAdmin({ reviews: initial, productos }: { reviews:
 
   const handleDelete = async (id: number) => {
     if (!confirm('¿Eliminar esta reseña?')) return
-    await fetch(`/muebleuno/api/reviews/${id}`, { method: 'DELETE' })
+    await fetch(`/api/reviews/${id}`, { method: 'DELETE' })
     setReviews(prev => prev.filter(r => r.id !== id))
   }
 
   const toggleActiva = async (r: Review) => {
-    const res = await fetch(`/muebleuno/api/reviews/${r.id}`, {
+    const res = await fetch(`/api/reviews/${r.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...r, activa: !r.activa }),

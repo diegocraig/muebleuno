@@ -26,8 +26,8 @@ export default function AdminSidebar() {
   return (
     <aside className="w-56 bg-gris-oscuro text-white flex flex-col min-h-screen shrink-0">
       <div className="px-6 py-5 border-b border-white/10">
-        <a href="/muebleuno" target="_blank" rel="noopener noreferrer" title="Ver sitio">
-          <NextImage src="/muebleuno/logo.png" alt="Mueble UNO" width={130} height={28} className="h-7 w-auto brightness-0 invert mb-1 hover:opacity-75 transition-opacity" />
+        <a href="/" target="_blank" rel="noopener noreferrer" title="Ver sitio">
+          <NextImage src="/logo.png" alt="Mueble UNO" width={130} height={28} className="h-7 w-auto brightness-0 invert mb-1 hover:opacity-75 transition-opacity" />
         </a>
         <p className="text-xs text-gris-claro mt-0.5">Admin Panel</p>
       </div>
@@ -46,7 +46,7 @@ export default function AdminSidebar() {
         })}
       </nav>
       <div className="px-3 py-4 border-t border-white/10">
-        <button onClick={async () => { await fetch('/muebleuno/api/auth/logout', { method: 'POST' }); window.location.href = '/muebleuno/admin/login' }}
+        <button onClick={async () => { await fetch('/api/auth/logout', { method: 'POST' }); window.location.href = '/admin/login' }}
           className="flex items-center gap-3 px-3 py-2.5 w-full rounded-lg text-sm text-gris-claro hover:bg-white/10 hover:text-white transition-colors">
           <LogOut className="w-4 h-4" />
           Cerrar sesión

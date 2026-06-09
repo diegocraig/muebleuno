@@ -52,7 +52,7 @@ export default function SubcategoriasAdmin({
     e.preventDefault()
     setLoading(true)
     const body = { ...form, slug: form.slug || slugify(form.nombre) }
-    const url = editing ? `/muebleuno/api/subcategorias/${editing}` : '/muebleuno/api/subcategorias'
+    const url = editing ? `/api/subcategorias/${editing}` : '/api/subcategorias'
     const method = editing ? 'PUT' : 'POST'
     const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
     const data = await res.json()
@@ -67,7 +67,7 @@ export default function SubcategoriasAdmin({
 
   const handleDelete = async (id: number) => {
     if (!confirm('¿Eliminar esta subcategoría?')) return
-    await fetch(`/muebleuno/api/subcategorias/${id}`, { method: 'DELETE' })
+    await fetch(`/api/subcategorias/${id}`, { method: 'DELETE' })
     setSubcategorias(prev => prev.filter(s => s.id !== id))
   }
 

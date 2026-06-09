@@ -68,7 +68,7 @@ export default function ProductosAdmin({
     e.preventDefault()
     setLoading(true)
     const body = { ...form, slug: form.slug || slugify(form.nombre) }
-    const url = editing ? `/muebleuno/api/productos/${editing}` : '/muebleuno/api/productos'
+    const url = editing ? `/api/productos/${editing}` : '/api/productos'
     const method = editing ? 'PUT' : 'POST'
     const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
     const data = await res.json()
@@ -82,7 +82,7 @@ export default function ProductosAdmin({
 
   const handleDelete = async (id: number) => {
     if (!confirm('¿Eliminar este producto?')) return
-    await fetch(`/muebleuno/api/productos/${id}`, { method: 'DELETE' })
+    await fetch(`/api/productos/${id}`, { method: 'DELETE' })
     setProductos(prev => prev.filter(p => p.id !== id))
   }
 

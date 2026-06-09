@@ -84,5 +84,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Error al guardar el archivo' }, { status: 500 })
   }
 
-  return NextResponse.json({ url: `/muebleuno/uploads/${filename}` })
+  return NextResponse.json({ url: `/uploads/${filename}` })
 }

@@ -29,7 +29,7 @@ function ModalReview({ pedido, onClose }: { pedido: Pedido; onClose: () => void 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
-    await fetch('/muebleuno/api/reviews', {
+    await fetch('/api/reviews', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...form, activa: true }),
@@ -122,7 +122,7 @@ export default function PedidosAdmin({ pedidos: initial }: { pedidos: Pedido[] }
   const filtrados = pedidos.filter(p => !filtroEstado || p.estado === filtroEstado)
 
   const cambiarEstado = async (id: number, estado: string) => {
-    await fetch(`/muebleuno/api/pedidos/${id}`, {
+    await fetch(`/api/pedidos/${id}`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ estado }),
     })

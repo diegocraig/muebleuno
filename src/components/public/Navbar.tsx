@@ -26,7 +26,7 @@ export default function Navbar() {
   }, [])
 
   useEffect(() => {
-    fetch('/muebleuno/api/categorias').then(r => r.json()).then(setCategorias)
+    fetch('/api/categorias').then(r => r.json()).then(setCategorias)
   }, [])
 
   const handleCatMouseEnter = (id: number) => {
@@ -58,7 +58,7 @@ export default function Navbar() {
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
           {/* Logo */}
           <Link href="/" className="shrink-0">
-            <Image src="/muebleuno/logo.png" alt="Mueble UNO" width={160} height={34} priority className="h-9 w-auto" />
+            <Image src="/logo.png" alt="Mueble UNO" width={160} height={34} priority className="h-9 w-auto" />
           </Link>
 
           {/* Nav links (desktop) */}

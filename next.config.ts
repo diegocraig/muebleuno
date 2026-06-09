@@ -1,7 +1,5 @@
 import type { NextConfig } from 'next'
 const nextConfig: NextConfig = {
-  basePath: '/muebleuno',
-  assetPrefix: '/muebleuno',
   output: 'standalone',
   images: {
     unoptimized: true,

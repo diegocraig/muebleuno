@@ -50,7 +50,7 @@ function TabGeneral({ config: initial, pagina }: { config: Config; pagina: strin
   const set = (k: keyof Config) => (v: string) => setForm(f => ({ ...f, [k]: v }))
   const save = async () => {
     setSaving(true)
-    await fetch(`/muebleuno/api/medida/config?pagina=${pagina}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
+    await fetch(`/api/medida/config?pagina=${pagina}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
     setSaving(false); setOk(true); setTimeout(() => setOk(false), 2000)
   }
   return (
@@ -112,18 +112,18 @@ function TabServicios({ servicios: initial, pagina }: { servicios: Servicio[]; p
   const save = async () => {
     const payload = { titulo: form.titulo, descripcion: form.descripcion, items: form.itemsText.split('\n').filter(Boolean), activo: form.activo }
     if (adding) {
-      const res = await fetch(`/muebleuno/api/medida/servicios?pagina=${pagina}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...payload, pagina }) })
+      const res = await fetch(`/api/medida/servicios?pagina=${pagina}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...payload, pagina }) })
       const nuevo = await res.json()
       setServicios(prev => [...prev, nuevo])
     } else {
-      await fetch(`/muebleuno/api/medida/servicios/${editId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+      await fetch(`/api/medida/servicios/${editId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
       setServicios(prev => prev.map(s => s.id === editId ? { ...s, ...payload, items: JSON.stringify(payload.items) } : s))
     }
     setEditId(null); setAdding(false)
   }
   const del = async (id: number) => {
     if (!confirm('¿Eliminar este servicio?')) return
-    await fetch(`/muebleuno/api/medida/servicios/${id}`, { method: 'DELETE' })
+    await fetch(`/api/medida/servicios/${id}`, { method: 'DELETE' })
     setServicios(prev => prev.filter(s => s.id !== id))
   }
   const editing = editId !== null || adding
@@ -180,18 +180,18 @@ function TabPasos({ pasos: initial, pagina }: { pasos: Paso[]; pagina: string })
   const startEdit = (p: Paso) => { setEditId(p.id); setForm({ numero: p.numero, titulo: p.titulo, texto: p.texto }); setAdding(false) }
   const save = async () => {
     if (adding) {
-      const res = await fetch(`/muebleuno/api/medida/pasos?pagina=${pagina}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, pagina }) })
+      const res = await fetch(`/api/medida/pasos?pagina=${pagina}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, pagina }) })
       const nuevo = await res.json()
       setPasos(prev => [...prev, nuevo])
     } else {
-      await fetch(`/muebleuno/api/medida/pasos/${editId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
+      await fetch(`/api/medida/pasos/${editId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
       setPasos(prev => prev.map(p => p.id === editId ? { ...p, ...form } : p))
     }
     setEditId(null); setAdding(false)
   }
   const del = async (id: number) => {
     if (!confirm('¿Eliminar este paso?')) return
-    await fetch(`/muebleuno/api/medida/pasos/${id}`, { method: 'DELETE' })
+    await fetch(`/api/medida/pasos/${id}`, { method: 'DELETE' })
     setPasos(prev => prev.filter(p => p.id !== id))
   }
   const editing = editId !== null || adding
@@ -245,18 +245,18 @@ function TabMateriales({ materiales: initial, pagina }: { materiales: Material[]
   const startEdit = (m: Material) => { setEditId(m.id); setForm({ nombre: m.nombre, detalle: m.detalle }); setAdding(false) }
   const save = async () => {
     if (adding) {
-      const res = await fetch(`/muebleuno/api/medida/materiales?pagina=${pagina}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, pagina }) })
+      const res = await fetch(`/api/medida/materiales?pagina=${pagina}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, pagina }) })
       const nuevo = await res.json()
       setMateriales(prev => [...prev, nuevo])
     } else {
-      await fetch(`/muebleuno/api/medida/materiales/${editId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
+      await fetch(`/api/medida/materiales/${editId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
       setMateriales(prev => prev.map(m => m.id === editId ? { ...m, ...form } : m))
     }
     setEditId(null); setAdding(false)
   }
   const del = async (id: number) => {
     if (!confirm('¿Eliminar este material?')) return
-    await fetch(`/muebleuno/api/medida/materiales/${id}`, { method: 'DELETE' })
+    await fetch(`/api/medida/materiales/${id}`, { method: 'DELETE' })
     setMateriales(prev => prev.filter(m => m.id !== id))
   }
   const editing = editId !== null || adding
@@ -307,9 +307,9 @@ function TabFotos({ fotos: initial, pagina }: { fotos: Foto[]; pagina: string })
     setUploading(true)
     for (const file of Array.from(files)) {
       const fd = new FormData(); fd.append('file', file)
-      const upRes = await fetch('/muebleuno/api/upload', { method: 'POST', body: fd })
+      const upRes = await fetch('/api/upload', { method: 'POST', body: fd })
       const { url } = await upRes.json()
-      const res = await fetch(`/muebleuno/api/medida/fotos?pagina=${pagina}`, {
+      const res = await fetch(`/api/medida/fotos?pagina=${pagina}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ imagen: url, pagina }),
       })
       const nueva = await res.json()
@@ -321,7 +321,7 @@ function TabFotos({ fotos: initial, pagina }: { fotos: Foto[]; pagina: string })
 
   const del = async (id: number) => {
     if (!confirm('¿Eliminar esta foto?')) return
-    await fetch(`/muebleuno/api/medida/fotos/${id}`, { method: 'DELETE' })
+    await fetch(`/api/medida/fotos/${id}`, { method: 'DELETE' })
     setFotos(prev => prev.filter(f => f.id !== id))
   }
 

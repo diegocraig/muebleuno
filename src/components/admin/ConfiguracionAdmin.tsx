@@ -23,7 +23,7 @@ export default function ConfiguracionAdmin({ config: initial }: { config: Config
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); setLoading(true)
-    await fetch('/muebleuno/api/configuracion', {
+    await fetch('/api/configuracion', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(form),
     })

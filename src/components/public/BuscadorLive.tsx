@@ -41,7 +41,7 @@ export default function BuscadorLive() {
     if (q.length < 2) { setResults([]); setOpen(false); return }
     setLoading(true)
     timer.current = setTimeout(async () => {
-      const res = await fetch(`/muebleuno/api/buscar?q=${encodeURIComponent(q)}`)
+      const res = await fetch(`/api/buscar?q=${encodeURIComponent(q)}`)
       const data = await res.json()
       setResults(data)
       setOpen(true)

@@ -70,7 +70,7 @@ export default function StockAdmin({ productos: initial }: { productos: Producto
     if (!editing) return
     setSaving(editing.id)
     const payload: Record<string, unknown> = { id: editing.id, [editing.field]: editing.value }
-    const res = await fetch('/muebleuno/api/stock', {
+    const res = await fetch('/api/stock', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),

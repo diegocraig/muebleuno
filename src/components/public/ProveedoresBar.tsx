@@ -1,8 +1,8 @@
 const LOGOS = [
-  { src: '/muebleuno/proveedores/egger.png', alt: 'Egger' },
-  { src: '/muebleuno/proveedores/faplac.png', alt: 'Faplac' },
-  { src: '/muebleuno/proveedores/haefele.png', alt: 'Häfele' },
-  { src: '/muebleuno/proveedores/vesto.png', alt: 'Vesto' },
+  { src: '/proveedores/egger.png', alt: 'Egger' },
+  { src: '/proveedores/faplac.png', alt: 'Faplac' },
+  { src: '/proveedores/haefele.png', alt: 'Häfele' },
+  { src: '/proveedores/vesto.png', alt: 'Vesto' },
 ]
 
 export default function ProveedoresBar() {

@@ -46,7 +46,7 @@ export default function SliderAdmin({ items: initial, config: initialConfig }: P
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); setLoading(true)
-    const url = editing ? `/muebleuno/api/slider/${editing}` : '/muebleuno/api/slider'
+    const url = editing ? `/api/slider/${editing}` : '/api/slider'
     const method = editing ? 'PUT' : 'POST'
     const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
     const data = await res.json()
@@ -57,7 +57,7 @@ export default function SliderAdmin({ items: initial, config: initialConfig }: P
 
   const handleDelete = async (id: number) => {
     if (!confirm('¿Eliminar este slide?')) return
-    await fetch(`/muebleuno/api/slider/${id}`, { method: 'DELETE' })
+    await fetch(`/api/slider/${id}`, { method: 'DELETE' })
     setItems(prev => prev.filter(i => i.id !== id))
   }
 
@@ -70,14 +70,14 @@ export default function SliderAdmin({ items: initial, config: initialConfig }: P
     newItems[idx] = b; newItems[idx + dir] = a
     setItems(newItems)
     await Promise.all([
-      fetch(`/muebleuno/api/slider/${a.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...a, orden: a.orden }) }),
-      fetch(`/muebleuno/api/slider/${b.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...b, orden: b.orden }) }),
+      fetch(`/api/slider/${a.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...a, orden: a.orden }) }),
+      fetch(`/api/slider/${b.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...b, orden: b.orden }) }),
     ])
   }
 
   const saveConfig = async () => {
     setSavingConfig(true)
-    await fetch('/muebleuno/api/configuracion', {
+    await fetch('/api/configuracion', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sliderIntervalo: config.intervalo, sliderTransicion: config.transicion }),

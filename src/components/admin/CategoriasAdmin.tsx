@@ -39,7 +39,7 @@ export default function CategoriasAdmin({ categorias: initial }: { categorias: C
       slug: form.slug || slugify(form.nombre),
       urlPagina: form.tipoBoton === 'pagina' ? form.urlPagina : null,
     }
-    const url = editing ? `/muebleuno/api/categorias/${editing}` : '/muebleuno/api/categorias'
+    const url = editing ? `/api/categorias/${editing}` : '/api/categorias'
     const method = editing ? 'PUT' : 'POST'
     const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
     const data = await res.json()
@@ -53,7 +53,7 @@ export default function CategoriasAdmin({ categorias: initial }: { categorias: C
 
   const handleDelete = async (id: number) => {
     if (!confirm('¿Eliminar esta categoría?')) return
-    await fetch(`/muebleuno/api/categorias/${id}`, { method: 'DELETE' })
+    await fetch(`/api/categorias/${id}`, { method: 'DELETE' })
     setCategorias(prev => prev.filter(c => c.id !== id))
   }
 

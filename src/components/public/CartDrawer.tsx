@@ -17,7 +17,7 @@ export default function CartDrawer() {
   const handlePedido = async (e: React.FormEvent) => {
     e.preventDefault()
     setSending(true)
-    await fetch('/muebleuno/api/pedidos', {
+    await fetch('/api/pedidos', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...form, items, total }),
