@@ -1,18 +1,41 @@
 'use client'
 import { useState } from 'react'
-import { X, Trash2, MessageCircle } from 'lucide-react'
+import { X, Trash2, MessageCircle, CreditCard } from 'lucide-react'
 import { useCart } from './CartProvider'
 import { formatPrice } from '@/lib/utils'
 
+type FormMode = null | 'nave' | 'contacto'
+
 export default function CartDrawer() {
   const { items, isOpen, setIsOpen, removeItem, updateQuantity, clear, total } = useCart()
-  const [showForm, setShowForm] = useState(false)
+  const [formMode, setFormMode] = useState<FormMode>(null)
   const [form, setForm] = useState({ nombre: '', email: '', telefono: '', notas: '' })
   const [sending, setSending] = useState(false)
   const [sent, setSent] = useState(false)
+  const [error, setError] = useState('')
 
   const waMessage = items.map(i => `- ${i.nombre} x${i.cantidad}: ${formatPrice(i.precio * i.cantidad)}`).join('\n')
     + `\n\nTotal: ${formatPrice(total)}`
+
+  const handleNave = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSending(true)
+    setError('')
+    try {
+      const res = await fetch('/api/nave/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...form, items, total }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.checkout_url) throw new Error(data.error ?? 'Error al generar el pago')
+      clear()
+      window.location.href = data.checkout_url
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Error al conectar con Nave')
+      setSending(false)
+    }
+  }
 
   const handlePedido = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -25,7 +48,7 @@ export default function CartDrawer() {
     setSending(false)
     setSent(true)
     clear()
-    setTimeout(() => { setSent(false); setShowForm(false); setIsOpen(false) }, 3000)
+    setTimeout(() => { setSent(false); setFormMode(null); setIsOpen(false) }, 3000)
   }
 
   if (!isOpen) return null
@@ -88,27 +111,52 @@ export default function CartDrawer() {
                 <span className="text-rojo-principal">{formatPrice(total)}</span>
               </div>
 
-              {!showForm ? (
+              {formMode === null ? (
                 <div className="space-y-3">
+                  <button
+                    onClick={() => setFormMode('nave')}
+                    className="flex items-center justify-center gap-2 w-full bg-rojo-principal hover:bg-rojo-hover text-white font-bold py-3.5 rounded-lg transition-colors text-base shadow-sm"
+                  >
+                    <CreditCard className="w-5 h-5" /> Pagar con tarjeta / QR
+                  </button>
                   <a
                     href={`https://wa.me/5491173670283?text=${encodeURIComponent('Hola Facundo! Mi carrito:\n' + waMessage)}`}
                     target="_blank" rel="noopener noreferrer"
                     className="flex items-center justify-center gap-2 w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3.5 rounded-lg transition-colors text-base shadow-sm"
                   >
-                    <MessageCircle className="w-5 h-5" /> Enviar pedido por WhatsApp
+                    <MessageCircle className="w-5 h-5" /> Consultar por WhatsApp
                   </a>
                   <div className="text-center">
-                    <button onClick={() => setShowForm(true)}
+                    <button onClick={() => setFormMode('contacto')}
                       className="text-xs text-gris-medio hover:text-gris-oscuro underline underline-offset-2 transition-colors">
-                      Preferís que te contactemos? Dejá tus datos
+                      ¿Preferís que te contactemos? Dejá tus datos
                     </button>
                   </div>
                 </div>
+              ) : formMode === 'nave' ? (
+                <form onSubmit={handleNave} className="space-y-2">
+                  <p className="text-xs text-gris-medio mb-1">Completá tus datos para continuar al pago seguro.</p>
+                  {(['nombre', 'email', 'telefono'] as const).map(f => (
+                    <input key={f} required type={f === 'email' ? 'email' : 'text'}
+                      placeholder={f === 'nombre' ? 'Nombre y apellido' : f === 'email' ? 'Email' : 'Teléfono'}
+                      value={form[f]} onChange={e => setForm(prev => ({ ...prev, [f]: e.target.value }))}
+                      className="w-full border rounded px-3 py-2 text-sm" />
+                  ))}
+                  {error && <p className="text-red-600 text-xs bg-red-50 px-3 py-2 rounded">{error}</p>}
+                  <button type="submit" disabled={sending}
+                    className="w-full bg-rojo-principal hover:bg-rojo-hover disabled:opacity-60 text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2">
+                    <CreditCard className="w-4 h-4" />
+                    {sending ? 'Generando pago...' : 'Ir al pago seguro'}
+                  </button>
+                  <button type="button" onClick={() => { setFormMode(null); setError('') }} className="w-full text-gris-medio text-sm hover:underline">
+                    Volver
+                  </button>
+                </form>
               ) : (
                 <form onSubmit={handlePedido} className="space-y-2">
                   {(['nombre', 'email', 'telefono'] as const).map(f => (
                     <input key={f} required type={f === 'email' ? 'email' : 'text'}
-                      placeholder={f.charAt(0).toUpperCase() + f.slice(1)}
+                      placeholder={f === 'nombre' ? 'Nombre y apellido' : f === 'email' ? 'Email' : 'Teléfono'}
                       value={form[f]} onChange={e => setForm(prev => ({ ...prev, [f]: e.target.value }))}
                       className="w-full border rounded px-3 py-2 text-sm" />
                   ))}
@@ -119,7 +167,7 @@ export default function CartDrawer() {
                     className="w-full bg-rojo-principal hover:bg-rojo-hover disabled:opacity-60 text-white font-bold py-3 rounded-lg transition-colors">
                     {sending ? 'Enviando...' : 'Confirmar pedido'}
                   </button>
-                  <button type="button" onClick={() => setShowForm(false)} className="w-full text-gris-medio text-sm hover:underline">
+                  <button type="button" onClick={() => setFormMode(null)} className="w-full text-gris-medio text-sm hover:underline">
                     Volver
                   </button>
                 </form>

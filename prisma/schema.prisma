@@ -73,15 +73,17 @@ model Review {
 }
 
 model Pedido {
-  id       Int      @id @default(autoincrement())
-  nombre   String
-  email    String
-  telefono String
-  items    String
-  total    Float
-  estado   String   @default("pendiente")
-  notas    String?
-  creadoEn DateTime @default(now())
+  id                   Int      @id @default(autoincrement())
+  nombre               String
+  email                String
+  telefono             String
+  items                String
+  total                Float
+  estado               String   @default("pendiente")
+  notas                String?
+  navePaymentRequestId String?
+  navePagoEstado       String?
+  creadoEn             DateTime @default(now())
 }
 
 model SliderItem {
