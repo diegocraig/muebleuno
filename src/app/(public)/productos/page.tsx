@@ -31,6 +31,8 @@ export default async function ProductosPage({ searchParams }: PageProps) {
   let orderBy: Record<string, string> = { creadoEn: 'desc' }
   if (params.order === 'precio_asc') orderBy = { precio: 'asc' }
   else if (params.order === 'precio_desc') orderBy = { precio: 'desc' }
+  else if (params.order === 'volumen_asc') orderBy = { volumen: 'asc' }
+  else if (params.order === 'volumen_desc') orderBy = { volumen: 'desc' }
   else if (params.order === 'nombre') orderBy = { nombre: 'asc' }
 
   const [total, productos, categorias] = await Promise.all([

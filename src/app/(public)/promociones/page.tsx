@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma'
-import ProductoGrid from '@/components/public/ProductoGrid'
+import ProductosOrdenables from '@/components/public/ProductosOrdenables'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,7 +15,7 @@ export default async function PromocionesPage() {
         <h1 className="text-4xl font-bold mb-2">Promociones</h1>
         <p className="text-xl opacity-90">Los mejores precios en muebles de calidad</p>
       </div>
-      <ProductoGrid productos={productos} />
+      <ProductosOrdenables productos={productos} />
     </div>
   )
 }

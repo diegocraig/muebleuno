@@ -11,12 +11,12 @@ interface Producto {
   imagenes: string; stock: number; destacado: boolean; novedad: boolean
   enPromocion: boolean; activo: boolean; categoriaId: number; categoria: Categoria
   subcategoriaId?: number | null; subcategoria?: Subcategoria | null
-  descripcion?: string | null; datosUtiles?: string | null
+  descripcion?: string | null; volumen?: number | null; datosUtiles?: string | null
   infoEmbalaje?: string | null; garantia?: string | null
 }
 
 const emptyForm = {
-  nombre: '', slug: '', descripcion: '', datosUtiles: '', infoEmbalaje: '', garantia: '',
+  nombre: '', slug: '', descripcion: '', volumen: '', datosUtiles: '', infoEmbalaje: '', garantia: '',
   precio: '', precioOferta: '', categoriaId: '', subcategoriaId: '',
   stock: '0', destacado: false, novedad: false, enPromocion: false, activo: true,
   imagenes: [] as string[],
@@ -52,6 +52,7 @@ export default function ProductosAdmin({
   const openEdit = (p: Producto) => {
     setForm({
       nombre: p.nombre, slug: p.slug, descripcion: p.descripcion ?? '',
+      volumen: p.volumen ? String(p.volumen) : '',
       datosUtiles: p.datosUtiles ?? '', infoEmbalaje: p.infoEmbalaje ?? '', garantia: p.garantia ?? '',
       precio: String(p.precio), precioOferta: p.precioOferta ? String(p.precioOferta) : '',
       categoriaId: String(p.categoriaId),
@@ -215,6 +216,15 @@ export default function ProductosAdmin({
                   <label className="block text-sm font-medium mb-1">Stock</label>
                   <input type="number" min="0" value={form.stock} onChange={e => setForm(f => ({ ...f, stock: e.target.value }))}
                     className="w-full border rounded-lg px-3 py-2 text-sm" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Volumen (litros)</label>
+                  <p className="text-xs text-gris-claro mb-1.5">
+                    Alto × Ancho × Profundidad del bulto en cm, dividido 1000.<br />
+                    Ej: 181 cm × 41 cm × 13 cm = 96,5 litros
+                  </p>
+                  <input type="number" min="0" step="0.1" value={form.volumen} onChange={e => setForm(f => ({ ...f, volumen: e.target.value }))}
+                    placeholder="0.0" className="w-full border rounded-lg px-3 py-2 text-sm" />
                 </div>
               </div>
               {/* Ficha técnica */}

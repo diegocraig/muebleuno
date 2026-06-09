@@ -39,16 +39,6 @@ export default function ContactoPage() {
             </div>
 
             <div className="flex items-start gap-3">
-              <Phone className="w-5 h-5 text-rojo-principal mt-0.5 shrink-0" />
-              <div>
-                <p className="font-medium">Teléfono</p>
-                <a href="tel:01144606272" className="text-gris-medio hover:text-rojo-principal transition-colors">
-                  (011) 4460-6272
-                </a>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-3">
               <MessageCircle className="w-5 h-5 text-rojo-principal mt-0.5 shrink-0" />
               <div>
                 <p className="font-medium mb-1">WhatsApp</p>
@@ -80,8 +70,8 @@ export default function ContactoPage() {
               <Clock className="w-5 h-5 text-rojo-principal mt-0.5 shrink-0" />
               <div>
                 <p className="font-medium mb-1">Horario de Atención</p>
-                <p className="text-gris-medio">Lunes a Jueves: 8:00 a 12:00 hs / 14:00 a 17:00 hs</p>
-                <p className="text-gris-medio">Viernes: 8:00 a 12:00 hs / 14:00 a 18:00 hs</p>
+                <p className="text-gris-medio">Lunes a Viernes: 8:00 a 12:00 hs / 14:00 a 17:00 hs</p>
+                <p className="text-gris-medio">Sábados: 9:00 a 12:30 hs</p>
               </div>
             </div>
 

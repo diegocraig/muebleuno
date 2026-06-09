@@ -80,7 +80,8 @@ export default function BuscadorLive() {
                 <div>
                   <p className="text-sm font-medium line-clamp-1">{p.nombre}</p>
                   <p className="text-xs text-gris-medio">{p.categoria.nombre}</p>
-                  <p className="text-sm font-bold text-rojo-principal">{formatPrice(p.precio)}</p>
+                  <p className="text-sm font-bold text-gray-400">{formatPrice(p.precio)}</p>
+                  <p className="text-sm font-bold text-rojo-principal">6 cuotas de {formatPrice(Math.ceil(p.precio / 6))}</p>
                 </div>
               </Link>
             )

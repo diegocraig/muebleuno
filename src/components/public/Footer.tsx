@@ -74,11 +74,6 @@ export default async function Footer() {
                 <span className="pl-5">El Palomar, Buenos Aires</span>
               </a>
             </li>
-            <li>
-              <a href="tel:01144606272" className="hover:text-white transition-colors">
-                📞 (011) 4460-6272
-              </a>
-            </li>
             <li className="pt-1">
               <p className="text-xs text-gris-claro/70 mb-1.5">WhatsApp:</p>
               <div className="flex flex-col gap-1.5">

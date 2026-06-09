@@ -207,16 +207,19 @@ export default function ProductoDetalle({ producto }: { producto: Producto }) {
           <p className="text-sm text-gris-medio mb-2">{producto.categoria.nombre}</p>
           <h1 className="text-3xl font-bold mb-4">{producto.nombre}</h1>
 
-          <div className="flex items-baseline gap-3 mb-6">
-            <span className="text-4xl font-black text-rojo-principal">{formatPrice(precioFinal)}</span>
-            {tieneOferta && (
-              <>
-                <span className="text-xl text-gris-claro line-through">{formatPrice(producto.precio)}</span>
-                <span className="bg-rojo-principal text-white text-sm font-bold px-2 py-0.5 rounded">
-                  {Math.round((1 - precioFinal / producto.precio) * 100)}% OFF
-                </span>
-              </>
-            )}
+          <div className="mb-6">
+            <div className="flex items-baseline gap-3">
+              <span className="text-4xl font-black text-gray-400">{formatPrice(precioFinal)}</span>
+              {tieneOferta && (
+                <>
+                  <span className="text-xl text-gris-claro line-through">{formatPrice(producto.precio)}</span>
+                  <span className="bg-rojo-principal text-white text-sm font-bold px-2 py-0.5 rounded">
+                    {Math.round((1 - precioFinal / producto.precio) * 100)}% OFF
+                  </span>
+                </>
+              )}
+            </div>
+            <p className="text-base font-bold text-rojo-principal mt-1">6 cuotas de {formatPrice(Math.ceil(precioFinal / 6))}</p>
           </div>
 
           {producto.descripcion && (

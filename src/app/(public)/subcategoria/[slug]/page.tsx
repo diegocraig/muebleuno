@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import ProductoGrid from '@/components/public/ProductoGrid'
+import ProductosOrdenables from '@/components/public/ProductosOrdenables'
 
 interface PageProps { params: Promise<{ slug: string }> }
 
@@ -31,7 +31,7 @@ export default async function SubcategoriaPage({ params }: PageProps) {
       </nav>
       <h1 className="text-3xl font-bold mb-2">{subcategoria.nombre}</h1>
       <p className="text-gris-medio mb-8">{subcategoria.productos.length} productos</p>
-      <ProductoGrid productos={subcategoria.productos} />
+      <ProductosOrdenables productos={subcategoria.productos} />
     </div>
   )
 }

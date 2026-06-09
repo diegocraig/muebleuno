@@ -8,7 +8,7 @@ import CartDrawer from './CartDrawer'
 import BuscadorLive from './BuscadorLive'
 
 interface Subcategoria { id: number; nombre: string; slug: string }
-interface Categoria { id: number; nombre: string; slug: string; subcategorias: Subcategoria[] }
+interface Categoria { id: number; nombre: string; slug: string; tipoBoton?: string; urlPagina?: string | null; subcategorias: Subcategoria[] }
 
 export default function Navbar() {
   const { count, setIsOpen } = useCart()
@@ -47,7 +47,7 @@ export default function Navbar() {
           </a>
           <div className="hidden md:flex items-center gap-1.5 opacity-80">
             <Clock className="w-3.5 h-3.5 shrink-0" />
-            <span>Lun a Jue 8-12 / 14-17 &nbsp;·&nbsp; Vie 8-12 / 14-18</span>
+            <span>Lun a Vie 8-12 / 14-17 &nbsp;·&nbsp; Sáb 9-12:30</span>
           </div>
           <span className="opacity-70">Envíos a todo el país</span>
         </div>
@@ -79,7 +79,7 @@ export default function Navbar() {
                     {cat.subcategorias.length > 0 ? (
                       <>
                         <div className="flex items-center justify-between px-4 py-2 hover:bg-gris-fondo hover:text-rojo-principal transition-colors cursor-default">
-                          <Link href={`/categoria/${cat.slug}`} className="flex-1">
+                          <Link href={cat.tipoBoton === 'pagina' && cat.urlPagina ? cat.urlPagina : `/categoria/${cat.slug}`} className="flex-1">
                             {cat.nombre}
                           </Link>
                           <ChevronRight className="w-4 h-4 opacity-50 shrink-0" />
@@ -101,7 +101,7 @@ export default function Navbar() {
                         )}
                       </>
                     ) : (
-                      <Link href={`/categoria/${cat.slug}`}
+                      <Link href={cat.tipoBoton === 'pagina' && cat.urlPagina ? cat.urlPagina : `/categoria/${cat.slug}`}
                         className="block px-4 py-2 hover:bg-gris-fondo hover:text-rojo-principal transition-colors">
                         {cat.nombre}
                       </Link>
@@ -145,7 +145,7 @@ export default function Navbar() {
             {categorias.map(cat => (
               <div key={cat.id}>
                 <div className="flex items-center justify-between">
-                  <Link href={`/categoria/${cat.slug}`}
+                  <Link href={cat.tipoBoton === 'pagina' && cat.urlPagina ? cat.urlPagina : `/categoria/${cat.slug}`}
                     className="flex-1 py-2 hover:text-rojo-principal transition-colors"
                     onClick={() => { if (!cat.subcategorias.length) setMenuOpen(false) }}>
                     {cat.nombre}

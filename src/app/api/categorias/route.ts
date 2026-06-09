@@ -32,6 +32,8 @@ export async function POST(req: NextRequest) {
       imagen: body.imagen,
       orden: parseInt(body.orden ?? 0),
       activa: body.activa ?? true,
+      tipoBoton: body.tipoBoton ?? 'catalogo',
+      urlPagina: body.tipoBoton === 'pagina' ? (body.urlPagina ?? null) : null,
     },
   })
   return NextResponse.json(categoria, { status: 201 })

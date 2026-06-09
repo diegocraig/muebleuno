@@ -64,6 +64,7 @@ export async function POST(req: NextRequest) {
         nombre: body.nombre,
         slug,
         descripcion: body.descripcion || null,
+        volumen: body.volumen ? parseFloat(body.volumen) : null,
         datosUtiles: body.datosUtiles || null,
         infoEmbalaje: body.infoEmbalaje || null,
         garantia: body.garantia || null,

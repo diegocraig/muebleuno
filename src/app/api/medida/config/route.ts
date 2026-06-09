@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/session'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const pagina = req.nextUrl.searchParams.get('pagina') ?? 'medida'
   const config = await prisma.medidaConfig.upsert({
-    where: { id: 1 }, update: {}, create: { id: 1 },
+    where: { pagina }, update: {}, create: { pagina },
   })
   return NextResponse.json(config)
 }
@@ -12,9 +13,10 @@ export async function GET() {
 export async function PATCH(req: NextRequest) {
   const session = await getSession()
   if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  const pagina = req.nextUrl.searchParams.get('pagina') ?? 'medida'
   const body = await req.json()
   const config = await prisma.medidaConfig.upsert({
-    where: { id: 1 }, update: body, create: { id: 1, ...body },
+    where: { pagina }, update: body, create: { pagina, ...body },
   })
   return NextResponse.json(config)
 }

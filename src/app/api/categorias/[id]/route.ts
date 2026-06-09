@@ -19,6 +19,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       imagen: body.imagen,
       orden: parseInt(body.orden ?? 0),
       activa: body.activa ?? true,
+      tipoBoton: body.tipoBoton ?? 'catalogo',
+      urlPagina: body.tipoBoton === 'pagina' ? (body.urlPagina ?? null) : null,
     },
   })
   return NextResponse.json(categoria)

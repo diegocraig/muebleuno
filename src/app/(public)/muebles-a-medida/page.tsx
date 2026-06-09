@@ -13,11 +13,11 @@ export const revalidate = 0
 
 export default async function MueblesAMedidaPage() {
   const [config, servicios, pasos, materiales, fotos] = await Promise.all([
-    prisma.medidaConfig.upsert({ where: { id: 1 }, update: {}, create: { id: 1 } }),
-    prisma.medidaServicio.findMany({ where: { activo: true }, orderBy: { orden: 'asc' } }),
-    prisma.medidaPaso.findMany({ orderBy: { orden: 'asc' } }),
-    prisma.medidaMaterial.findMany({ orderBy: { orden: 'asc' } }),
-    prisma.medidaFoto.findMany({ where: { activo: true }, orderBy: { orden: 'asc' } }),
+    prisma.medidaConfig.upsert({ where: { pagina: 'medida' }, update: {}, create: { pagina: 'medida' } }),
+    prisma.medidaServicio.findMany({ where: { pagina: 'medida', activo: true }, orderBy: { orden: 'asc' } }),
+    prisma.medidaPaso.findMany({ where: { pagina: 'medida' }, orderBy: { orden: 'asc' } }),
+    prisma.medidaMaterial.findMany({ where: { pagina: 'medida' }, orderBy: { orden: 'asc' } }),
+    prisma.medidaFoto.findMany({ where: { pagina: 'medida', activo: true }, orderBy: { orden: 'asc' } }),
   ])
 
   const edificiosItems: string[] = JSON.parse(config.edificiosItems || '[]')

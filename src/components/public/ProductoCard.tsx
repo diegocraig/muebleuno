@@ -111,11 +111,12 @@ export default function ProductoCard({ producto }: { producto: Producto }) {
         <p className="text-xs text-gris-medio mb-1">{producto.categoria.nombre}</p>
         <h3 className="font-semibold text-sm leading-tight mb-2 flex-1 line-clamp-2">{producto.nombre}</h3>
         <div className="flex items-baseline gap-2">
-          <span className="font-black text-lg text-rojo-principal">{formatPrice(precioFinal)}</span>
+          <span className="font-black text-lg text-gray-400">{formatPrice(precioFinal)}</span>
           {tieneOferta && (
             <span className="text-sm text-gris-claro line-through">{formatPrice(producto.precio)}</span>
           )}
         </div>
+        <p className="text-sm font-bold text-rojo-principal mt-0.5">6 cuotas de {formatPrice(Math.ceil(precioFinal / 6))}</p>
         {!sinStock && producto.stock <= 3 && (
           <p className="text-xs text-orange-500 font-semibold mt-1.5">
             ¡Quedan solo {producto.stock} {producto.stock === 1 ? 'unidad' : 'unidades'}!

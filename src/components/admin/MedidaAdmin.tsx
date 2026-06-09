@@ -23,6 +23,12 @@ const tabs: { key: Tab; label: string }[] = [
   { key: 'fotos', label: 'Fotos / Carrusel' },
 ]
 
+const TITULOS: Record<string, string> = {
+  medida: 'Muebles a Medida',
+  carpinteros: 'Carpinteros',
+  puertas: 'Puertas de Aluminio',
+}
+
 /* ── helpers ── */
 function Field({ label, value, onChange, textarea }: { label: string; value: string; onChange: (v: string) => void; textarea?: boolean }) {
   const cls = 'w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-rojo-principal'
@@ -37,14 +43,14 @@ function Field({ label, value, onChange, textarea }: { label: string; value: str
 }
 
 /* ── Tab General ── */
-function TabGeneral({ config: initial }: { config: Config }) {
+function TabGeneral({ config: initial, pagina }: { config: Config; pagina: string }) {
   const [form, setForm] = useState(initial)
   const [saving, setSaving] = useState(false)
   const [ok, setOk] = useState(false)
   const set = (k: keyof Config) => (v: string) => setForm(f => ({ ...f, [k]: v }))
   const save = async () => {
     setSaving(true)
-    await fetch('/muebleuno/api/medida/config', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
+    await fetch(`/muebleuno/api/medida/config?pagina=${pagina}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
     setSaving(false); setOk(true); setTimeout(() => setOk(false), 2000)
   }
   return (
@@ -92,7 +98,7 @@ function TabGeneral({ config: initial }: { config: Config }) {
 }
 
 /* ── Tab Servicios ── */
-function TabServicios({ servicios: initial }: { servicios: Servicio[] }) {
+function TabServicios({ servicios: initial, pagina }: { servicios: Servicio[]; pagina: string }) {
   const [servicios, setServicios] = useState(initial)
   const [editId, setEditId] = useState<number | null>(null)
   const [form, setForm] = useState({ titulo: '', descripcion: '', itemsText: '', activo: true })
@@ -106,7 +112,7 @@ function TabServicios({ servicios: initial }: { servicios: Servicio[] }) {
   const save = async () => {
     const payload = { titulo: form.titulo, descripcion: form.descripcion, items: form.itemsText.split('\n').filter(Boolean), activo: form.activo }
     if (adding) {
-      const res = await fetch('/muebleuno/api/medida/servicios', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+      const res = await fetch(`/muebleuno/api/medida/servicios?pagina=${pagina}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...payload, pagina }) })
       const nuevo = await res.json()
       setServicios(prev => [...prev, nuevo])
     } else {
@@ -165,7 +171,7 @@ function TabServicios({ servicios: initial }: { servicios: Servicio[] }) {
 }
 
 /* ── Tab Pasos ── */
-function TabPasos({ pasos: initial }: { pasos: Paso[] }) {
+function TabPasos({ pasos: initial, pagina }: { pasos: Paso[]; pagina: string }) {
   const [pasos, setPasos] = useState(initial)
   const [editId, setEditId] = useState<number | null>(null)
   const [form, setForm] = useState({ numero: '', titulo: '', texto: '' })
@@ -174,7 +180,7 @@ function TabPasos({ pasos: initial }: { pasos: Paso[] }) {
   const startEdit = (p: Paso) => { setEditId(p.id); setForm({ numero: p.numero, titulo: p.titulo, texto: p.texto }); setAdding(false) }
   const save = async () => {
     if (adding) {
-      const res = await fetch('/muebleuno/api/medida/pasos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
+      const res = await fetch(`/muebleuno/api/medida/pasos?pagina=${pagina}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, pagina }) })
       const nuevo = await res.json()
       setPasos(prev => [...prev, nuevo])
     } else {
@@ -230,7 +236,7 @@ function TabPasos({ pasos: initial }: { pasos: Paso[] }) {
 }
 
 /* ── Tab Materiales ── */
-function TabMateriales({ materiales: initial }: { materiales: Material[] }) {
+function TabMateriales({ materiales: initial, pagina }: { materiales: Material[]; pagina: string }) {
   const [materiales, setMateriales] = useState(initial)
   const [editId, setEditId] = useState<number | null>(null)
   const [form, setForm] = useState({ nombre: '', detalle: '' })
@@ -239,7 +245,7 @@ function TabMateriales({ materiales: initial }: { materiales: Material[] }) {
   const startEdit = (m: Material) => { setEditId(m.id); setForm({ nombre: m.nombre, detalle: m.detalle }); setAdding(false) }
   const save = async () => {
     if (adding) {
-      const res = await fetch('/muebleuno/api/medida/materiales', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
+      const res = await fetch(`/muebleuno/api/medida/materiales?pagina=${pagina}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, pagina }) })
       const nuevo = await res.json()
       setMateriales(prev => [...prev, nuevo])
     } else {
@@ -291,7 +297,7 @@ function TabMateriales({ materiales: initial }: { materiales: Material[] }) {
 }
 
 /* ── Tab Fotos ── */
-function TabFotos({ fotos: initial }: { fotos: Foto[] }) {
+function TabFotos({ fotos: initial, pagina }: { fotos: Foto[]; pagina: string }) {
   const [fotos, setFotos] = useState(initial)
   const [uploading, setUploading] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -303,8 +309,8 @@ function TabFotos({ fotos: initial }: { fotos: Foto[] }) {
       const fd = new FormData(); fd.append('file', file)
       const upRes = await fetch('/muebleuno/api/upload', { method: 'POST', body: fd })
       const { url } = await upRes.json()
-      const res = await fetch('/muebleuno/api/medida/fotos', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ imagen: url }),
+      const res = await fetch(`/muebleuno/api/medida/fotos?pagina=${pagina}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ imagen: url, pagina }),
       })
       const nueva = await res.json()
       setFotos(prev => [...prev, nueva])
@@ -354,14 +360,15 @@ function TabFotos({ fotos: initial }: { fotos: Foto[] }) {
 }
 
 /* ── Root ── */
-export default function MedidaAdmin({ config, servicios, pasos, materiales, fotos }: {
-  config: Config; servicios: Servicio[]; pasos: Paso[]; materiales: Material[]; fotos: Foto[]
+export default function MedidaAdmin({ config, servicios, pasos, materiales, fotos, pagina = 'medida' }: {
+  config: Config; servicios: Servicio[]; pasos: Paso[]; materiales: Material[]; fotos: Foto[]; pagina?: string
 }) {
   const [tab, setTab] = useState<Tab>('general')
+  const titulo = TITULOS[pagina] ?? pagina
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">Muebles a Medida</h1>
+      <h1 className="text-2xl font-bold mb-6">{titulo}</h1>
       <div className="flex gap-1 mb-8 border-b">
         {tabs.map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
@@ -370,11 +377,11 @@ export default function MedidaAdmin({ config, servicios, pasos, materiales, foto
           </button>
         ))}
       </div>
-      {tab === 'general'    && <TabGeneral config={config} />}
-      {tab === 'servicios'  && <TabServicios servicios={servicios} />}
-      {tab === 'pasos'      && <TabPasos pasos={pasos} />}
-      {tab === 'materiales' && <TabMateriales materiales={materiales} />}
-      {tab === 'fotos'      && <TabFotos fotos={fotos} />}
+      {tab === 'general'    && <TabGeneral config={config} pagina={pagina} />}
+      {tab === 'servicios'  && <TabServicios servicios={servicios} pagina={pagina} />}
+      {tab === 'pasos'      && <TabPasos pasos={pasos} pagina={pagina} />}
+      {tab === 'materiales' && <TabMateriales materiales={materiales} pagina={pagina} />}
+      {tab === 'fotos'      && <TabFotos fotos={fotos} pagina={pagina} />}
     </div>
   )
 }
