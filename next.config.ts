@@ -1,8 +1,5 @@
 import type { NextConfig } from 'next'
-
 const nextConfig: NextConfig = {
-  basePath: '/muebleuno',
-  assetPrefix: '/muebleuno',
   output: 'standalone',
   images: {
     unoptimized: true,
@@ -11,8 +8,7 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        // HTML pages: no cache
-        source: '/muebleuno/((?!_next/static|uploads).*)',
+        source: '/((?!_next/static|uploads).*)',
         headers: [
           { key: 'Cache-Control', value: 'no-store, no-cache, must-revalidate, proxy-revalidate' },
           { key: 'Pragma', value: 'no-cache' },
@@ -21,15 +17,13 @@ const nextConfig: NextConfig = {
         ],
       },
       {
-        // Static assets: cache 1 year (tienen hash en el nombre)
-        source: '/muebleuno/_next/static/(.*)',
+        source: '/_next/static/(.*)',
         headers: [
           { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
         ],
       },
       {
-        // Uploads: cache 7 días
-        source: '/muebleuno/uploads/(.*)',
+        source: '/uploads/(.*)',
         headers: [
           { key: 'Cache-Control', value: 'public, max-age=604800' },
         ],
@@ -37,5 +31,4 @@ const nextConfig: NextConfig = {
     ]
   },
 }
-
 export default nextConfig
