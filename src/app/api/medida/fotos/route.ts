@@ -10,8 +10,9 @@ export async function POST(req: NextRequest) {
   const session = await getSession()
   if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   const body = await req.json()
-  const count = await prisma.medidaFoto.count()
+  const pagina = body.pagina ?? 'medida'
+  const count = await prisma.medidaFoto.count({ where: { pagina } })
   return NextResponse.json(await prisma.medidaFoto.create({
-    data: { imagen: body.imagen, titulo: body.titulo ?? null, orden: count },
+    data: { imagen: body.imagen, titulo: body.titulo ?? null, orden: count, pagina },
   }), { status: 201 })
 }
