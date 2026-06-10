@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/session'
+import { checkRateLimit } from '@/lib/rateLimiter'
 
 export async function GET(req: NextRequest) {
   const session = await getSession()
@@ -16,7 +17,24 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(pedidos)
 }
 
+// 5 pedidos cada 10 minutos por IP
+const MAX_PEDIDOS = 5
+const WINDOW_PEDIDOS_MS = 10 * 60 * 1000
+
 export async function POST(req: NextRequest) {
+  const ip =
+    req.headers.get('x-forwarded-for')?.split(',')[0].trim() ??
+    req.headers.get('x-real-ip') ??
+    'unknown'
+
+  const limit = checkRateLimit(`pedidos:${ip}`, MAX_PEDIDOS, WINDOW_PEDIDOS_MS)
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: 'Demasiados pedidos. Intentá de nuevo en unos minutos.' },
+      { status: 429, headers: { 'Retry-After': String(limit.retryAfter) } },
+    )
+  }
+
   const body = await req.json()
 
   const pedido = await prisma.pedido.create({
