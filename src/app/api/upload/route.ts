@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
 
   // Guardar archivo
   const filename = `${uuidv4()}.jpg`
-  const uploadDir = process.env.UPLOAD_DIR ?? '/var/www/muebleuno/public/uploads'
+  const uploadDir = process.env.UPLOAD_DIR ?? '/app/public/uploads'
   const filepath = join(uploadDir, filename)
 
   try {
