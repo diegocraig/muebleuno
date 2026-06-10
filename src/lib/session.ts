@@ -1,9 +1,11 @@
 import { SignJWT, jwtVerify } from 'jose'
 import { cookies } from 'next/headers'
 
-const SECRET = new TextEncoder().encode(
-  process.env.NEXTAUTH_SECRET ?? 'muebleuno_secret_key_2024'
-)
+function getSecret() {
+  const s = process.env.NEXTAUTH_SECRET
+  if (!s) throw new Error('NEXTAUTH_SECRET no está definido')
+  return new TextEncoder().encode(s)
+}
 const COOKIE = 'muebleuno_session'
 
 export interface SessionPayload {
@@ -17,7 +19,7 @@ export async function createSession(payload: SessionPayload) {
   const token = await new SignJWT(payload as unknown as Record<string, unknown>)
     .setProtectedHeader({ alg: 'HS256' })
     .setExpirationTime('7d')
-    .sign(SECRET)
+    .sign(getSecret())
 
   const cookieStore = await cookies()
   cookieStore.set(COOKIE, token, {
@@ -34,7 +36,7 @@ export async function getSession(): Promise<SessionPayload | null> {
     const cookieStore = await cookies()
     const token = cookieStore.get(COOKIE)?.value
     if (!token) return null
-    const { payload } = await jwtVerify(token, SECRET)
+    const { payload } = await jwtVerify(token, getSecret())
     return payload as unknown as SessionPayload
   } catch {
     return null

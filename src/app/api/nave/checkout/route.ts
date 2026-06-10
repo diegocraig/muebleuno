@@ -4,7 +4,7 @@ import { getNaveToken, NAVE_PAYMENT_URL } from '@/lib/nave'
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
-  const { nombre, email, telefono, notas, items, total } = body
+  const { nombre, email, telefono, notas, items, total, tipoEnvioId, costoEnvio } = body
 
   const pedido = await prisma.pedido.create({
     data: {
@@ -15,6 +15,8 @@ export async function POST(req: NextRequest) {
       items: JSON.stringify(items),
       total: parseFloat(total),
       estado: 'pendiente',
+      tipoEnvioId: tipoEnvioId ?? null,
+      costoEnvio: parseFloat(costoEnvio ?? 0),
     },
   })
 

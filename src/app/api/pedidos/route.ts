@@ -28,6 +28,8 @@ export async function POST(req: NextRequest) {
       total: parseFloat(body.total),
       estado: 'pendiente',
       notas: body.notas,
+      tipoEnvioId: body.tipoEnvioId ?? null,
+      costoEnvio: parseFloat(body.costoEnvio ?? 0),
     },
   })
   return NextResponse.json(pedido, { status: 201 })

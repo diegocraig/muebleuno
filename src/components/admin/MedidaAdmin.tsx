@@ -327,7 +327,7 @@ function TabFotos({ fotos: initial, pagina }: { fotos: Foto[]; pagina: string })
 
   return (
     <div className="max-w-4xl">
-      <div className="flex items-center gap-4 mb-6">
+      <div className="flex items-center gap-4 mb-3">
         <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={e => upload(e.target.files)} />
         <button onClick={() => fileRef.current?.click()} disabled={uploading}
           className="flex items-center gap-2 bg-rojo-principal text-white font-bold px-4 py-2.5 rounded-lg hover:bg-rojo-hover disabled:opacity-60">
@@ -335,6 +335,10 @@ function TabFotos({ fotos: initial, pagina }: { fotos: Foto[]; pagina: string })
         </button>
         <span className="text-sm text-gris-medio">{fotos.length} foto{fotos.length !== 1 ? 's' : ''} en el carrusel</span>
       </div>
+      <p className="text-xs text-gris-claro mb-6">
+        Tamaño recomendado: <span className="font-semibold text-gris-medio">1280 × 720 px</span> (proporción 16:9).
+        Podés subir cualquier tamaño, pero imágenes fuera de esa proporción tendrán franjas negras a los costados o arriba/abajo.
+      </p>
       {fotos.length === 0 ? (
         <div className="border-2 border-dashed rounded-xl p-12 text-center text-gris-medio">
           <Upload className="w-8 h-8 mx-auto mb-2 opacity-40" />

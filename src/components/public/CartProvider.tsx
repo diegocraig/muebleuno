@@ -11,6 +11,13 @@ interface CartItem {
   cantidad: number
 }
 
+export interface TipoEnvio {
+  id: number
+  nombre: string
+  costo: number
+  activo: boolean
+}
+
 interface CartContextType {
   items: CartItem[]
   addItem: (item: Omit<CartItem, 'cantidad'>) => void
@@ -21,6 +28,10 @@ interface CartContextType {
   count: number
   isOpen: boolean
   setIsOpen: (v: boolean) => void
+  tipoEnvio: TipoEnvio | null
+  setTipoEnvio: (t: TipoEnvio | null) => void
+  costoEnvio: number
+  totalConEnvio: number
 }
 
 const CartContext = createContext<CartContextType | null>(null)
@@ -42,6 +53,7 @@ export default function CartProvider({ children }: { children: React.ReactNode }
     }
   })
   const [isOpen, setIsOpen] = useState(false)
+  const [tipoEnvio, setTipoEnvio] = useState<TipoEnvio | null>(null)
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(items))
@@ -65,13 +77,22 @@ export default function CartProvider({ children }: { children: React.ReactNode }
     setItems(prev => prev.map(i => i.productoId === productoId ? { ...i, cantidad } : i))
   }, [removeItem])
 
-  const clear = useCallback(() => setItems([]), [])
+  const clear = useCallback(() => {
+    setItems([])
+    setTipoEnvio(null)
+  }, [])
 
   const total = items.reduce((sum, i) => sum + i.precio * i.cantidad, 0)
   const count = items.reduce((sum, i) => sum + i.cantidad, 0)
+  const costoEnvio = tipoEnvio?.costo ?? 0
+  const totalConEnvio = total + costoEnvio
 
   return (
-    <CartContext.Provider value={{ items, addItem, removeItem, updateQuantity, clear, total, count, isOpen, setIsOpen }}>
+    <CartContext.Provider value={{
+      items, addItem, removeItem, updateQuantity, clear,
+      total, count, isOpen, setIsOpen,
+      tipoEnvio, setTipoEnvio, costoEnvio, totalConEnvio,
+    }}>
       {children}
     </CartContext.Provider>
   )

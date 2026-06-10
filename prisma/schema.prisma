@@ -72,18 +72,29 @@ model Review {
   creadaEn   DateTime  @default(now())
 }
 
+model TipoEnvio {
+  id      Int      @id @default(autoincrement())
+  nombre  String
+  costo   Float
+  activo  Boolean  @default(true)
+  pedidos Pedido[]
+}
+
 model Pedido {
-  id                   Int      @id @default(autoincrement())
+  id                   Int        @id @default(autoincrement())
   nombre               String
   email                String
   telefono             String
   items                String
   total                Float
-  estado               String   @default("pendiente")
+  estado               String     @default("pendiente")
   notas                String?
   navePaymentRequestId String?
   navePagoEstado       String?
-  creadoEn             DateTime @default(now())
+  tipoEnvioId          Int?
+  tipoEnvio            TipoEnvio? @relation(fields: [tipoEnvioId], references: [id], onDelete: SetNull)
+  costoEnvio           Float      @default(0)
+  creadoEn             DateTime   @default(now())
 }
 
 model SliderItem {

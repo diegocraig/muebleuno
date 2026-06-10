@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import NextImage from 'next/image'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, Package, Layers, FolderTree, ShoppingBag, Image, Settings, LogOut, Star, BarChart2, Ruler, Hammer, DoorOpen } from 'lucide-react'
+import { LayoutDashboard, Package, Layers, FolderTree, ShoppingBag, Image, Settings, LogOut, Star, BarChart2, Ruler, Hammer, DoorOpen, Truck } from 'lucide-react'
 
 
 const links = [
@@ -15,6 +15,7 @@ const links = [
   { href: '/admin/categorias', label: 'Categorías', icon: Layers },
   { href: '/admin/subcategorias', label: 'Subcategorías', icon: FolderTree },
   { href: '/admin/pedidos', label: 'Pedidos', icon: ShoppingBag },
+  { href: '/admin/tipos-envio', label: 'Tipos de envío', icon: Truck },
   { href: '/admin/reviews', label: 'Reseñas', icon: Star },
   { href: '/admin/slider', label: 'Slider', icon: Image },
   { href: '/admin/configuracion', label: 'Configuración', icon: Settings },
