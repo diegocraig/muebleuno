@@ -23,8 +23,20 @@ export async function GET(req: NextRequest) {
   const buscar = searchParams.get('buscar')
   const page = parseInt(searchParams.get('page') ?? '1')
   const limit = parseInt(searchParams.get('limit') ?? '12')
-  const orderBy = searchParams.get('orderBy') ?? 'creadoEn'
-  const order = searchParams.get('order') ?? 'desc'
+
+  const ALLOWED_ORDER_BY = ['creadoEn', 'nombre', 'precio'] as const
+  const ALLOWED_ORDER = ['asc', 'desc'] as const
+  type AllowedOrderBy = typeof ALLOWED_ORDER_BY[number]
+  type AllowedOrder = typeof ALLOWED_ORDER[number]
+
+  const rawOrderBy = searchParams.get('orderBy') ?? 'creadoEn'
+  const rawOrder = searchParams.get('order') ?? 'desc'
+  const orderBy: AllowedOrderBy = (ALLOWED_ORDER_BY as readonly string[]).includes(rawOrderBy)
+    ? (rawOrderBy as AllowedOrderBy)
+    : 'creadoEn'
+  const order: AllowedOrder = (ALLOWED_ORDER as readonly string[]).includes(rawOrder)
+    ? (rawOrder as AllowedOrder)
+    : 'desc'
 
   const where: Record<string, unknown> = { activo: true }
   if (categoria) where.categoria = { slug: categoria }
