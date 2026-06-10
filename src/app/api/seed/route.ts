@@ -4,8 +4,7 @@ import bcrypt from 'bcryptjs'
 
 export async function POST() {
   if (process.env.NODE_ENV === 'production') {
-    const count = await prisma.usuario.count()
-    if (count > 0) return NextResponse.json({ error: 'Ya inicializado' }, { status: 400 })
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
   const hash = await bcrypt.hash('muebleuno2024', 10)

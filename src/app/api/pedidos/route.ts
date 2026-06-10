@@ -36,6 +36,36 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json()
+  const rawItems: { productoId: number; cantidad: number }[] = body.items ?? []
+
+  // Recalcular total desde la DB — no confiar en el precio del cliente
+  const productIds = rawItems.map(i => i.productoId)
+  const productos = await prisma.producto.findMany({
+    where: { id: { in: productIds }, activo: true },
+    select: { id: true, precio: true, precioOferta: true },
+  })
+  const precioMap = new Map(productos.map(p => [p.id, p.precioOferta ?? p.precio]))
+
+  let totalProductos = 0
+  for (const item of rawItems) {
+    const precio = precioMap.get(item.productoId)
+    if (precio == null) continue
+    totalProductos += precio * item.cantidad
+  }
+
+  let costoEnvio = 0
+  let tipoEnvioId: number | null = null
+  if (body.tipoEnvioId) {
+    const tipoEnvio = await prisma.tipoEnvio.findUnique({
+      where: { id: parseInt(body.tipoEnvioId), activo: true },
+    })
+    if (tipoEnvio) {
+      costoEnvio = tipoEnvio.costo
+      tipoEnvioId = tipoEnvio.id
+    }
+  }
+
+  const total = totalProductos + costoEnvio
 
   const pedido = await prisma.pedido.create({
     data: {
@@ -43,11 +73,11 @@ export async function POST(req: NextRequest) {
       email: body.email,
       telefono: body.telefono,
       items: JSON.stringify(body.items),
-      total: parseFloat(body.total),
+      total,
       estado: 'pendiente',
       notas: body.notas,
-      tipoEnvioId: body.tipoEnvioId ?? null,
-      costoEnvio: parseFloat(body.costoEnvio ?? 0),
+      tipoEnvioId,
+      costoEnvio,
     },
   })
   return NextResponse.json(pedido, { status: 201 })
