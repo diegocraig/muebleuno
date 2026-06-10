@@ -5,11 +5,19 @@ import { SITE_URL, BASE_PATH } from '@/lib/seo'
 const url = (path: string) => `${SITE_URL}${BASE_PATH}${path}`
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [productos, categorias, subcategorias] = await Promise.all([
-    prisma.producto.findMany({ where: { activo: true }, select: { slug: true, actualizadoEn: true } }),
-    prisma.categoria.findMany({ where: { activa: true }, select: { slug: true } }),
-    prisma.subcategoria.findMany({ where: { activa: true }, select: { slug: true } }),
-  ])
+  let productos: { slug: string; actualizadoEn: Date }[] = []
+  let categorias: { slug: string }[] = []
+  let subcategorias: { slug: string }[] = []
+
+  try {
+    ;[productos, categorias, subcategorias] = await Promise.all([
+      prisma.producto.findMany({ where: { activo: true }, select: { slug: true, actualizadoEn: true } }),
+      prisma.categoria.findMany({ where: { activa: true }, select: { slug: true } }),
+      prisma.subcategoria.findMany({ where: { activa: true }, select: { slug: true } }),
+    ])
+  } catch {
+    // DB no disponible en build time — se genera con solo páginas estáticas
+  }
 
   const staticPages: MetadataRoute.Sitemap = [
     { url: url(''),              lastModified: new Date(), changeFrequency: 'daily',   priority: 1.0 },

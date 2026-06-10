@@ -2,11 +2,16 @@ import Link from 'next/link'
 import { prisma } from '@/lib/prisma'
 
 export default async function Footer() {
-  const categorias = await prisma.categoria.findMany({
-    where: { activa: true },
-    orderBy: { orden: 'asc' },
-    select: { nombre: true, slug: true },
-  })
+  let categorias: { nombre: string; slug: string }[] = []
+  try {
+    categorias = await prisma.categoria.findMany({
+      where: { activa: true },
+      orderBy: { orden: 'asc' },
+      select: { nombre: true, slug: true },
+    })
+  } catch {
+    // DB no disponible en build time
+  }
 
   return (
     <footer className="bg-gris-oscuro text-white mt-12">
