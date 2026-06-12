@@ -18,7 +18,7 @@ const DEFAULT_CONFIG = CTX_CONFIG.producto
 
 export async function POST(req: NextRequest) {
   const session = await getSession()
-  if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  if (!session || session.rol !== 'admin') return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
   const ctx = req.nextUrl.searchParams.get('ctx') ?? 'producto'
   const config = CTX_CONFIG[ctx] ?? DEFAULT_CONFIG

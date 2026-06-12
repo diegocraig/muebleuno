@@ -9,7 +9,7 @@ export async function GET() {
 
 export async function PUT(req: NextRequest) {
   const session = await getSession()
-  if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  if (!session || session.rol !== 'admin') return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
   const body = await req.json()
   const config = await prisma.configuracion.upsert({
