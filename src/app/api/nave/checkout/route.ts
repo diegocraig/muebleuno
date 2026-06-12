@@ -4,7 +4,47 @@ import { getNaveToken, NAVE_PAYMENT_URL } from '@/lib/nave'
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
-  const { nombre, email, telefono, notas, items, total, tipoEnvioId, costoEnvio } = body
+  const { nombre, email, telefono, notas } = body
+  const rawItems: { productoId: number; cantidad: number }[] = body.items ?? []
+
+  // Recalcular precios desde la DB — no confiar en el precio/total del cliente
+  const productIds = rawItems.map(i => i.productoId)
+  const productos = await prisma.producto.findMany({
+    where: { id: { in: productIds }, activo: true },
+    select: { id: true, nombre: true, precio: true, precioOferta: true },
+  })
+  const productoMap = new Map(productos.map(p => [p.id, p]))
+
+  // Líneas válidas (producto existe y está activo) con precio de la DB
+  const lineas = rawItems
+    .map(item => {
+      const prod = productoMap.get(item.productoId)
+      if (!prod || item.cantidad <= 0) return null
+      const precio = prod.precioOferta ?? prod.precio
+      return { nombre: prod.nombre, cantidad: item.cantidad, precio }
+    })
+    .filter((l): l is { nombre: string; cantidad: number; precio: number } => l !== null)
+
+  if (lineas.length === 0) {
+    return NextResponse.json({ error: 'No hay productos válidos en el pedido' }, { status: 400 })
+  }
+
+  const totalProductos = lineas.reduce((acc, l) => acc + l.precio * l.cantidad, 0)
+
+  // Validar tipo de envío contra la DB
+  let costoEnvio = 0
+  let tipoEnvioId: number | null = null
+  if (body.tipoEnvioId) {
+    const tipoEnvio = await prisma.tipoEnvio.findUnique({
+      where: { id: parseInt(body.tipoEnvioId), activo: true },
+    })
+    if (tipoEnvio) {
+      costoEnvio = tipoEnvio.costo
+      tipoEnvioId = tipoEnvio.id
+    }
+  }
+
+  const total = totalProductos + costoEnvio
 
   const pedido = await prisma.pedido.create({
     data: {
@@ -12,11 +52,11 @@ export async function POST(req: NextRequest) {
       email,
       telefono,
       notas: notas || null,
-      items: JSON.stringify(items),
-      total: parseFloat(total),
+      items: JSON.stringify(rawItems),
+      total,
       estado: 'pendiente',
-      tipoEnvioId: tipoEnvioId ?? null,
-      costoEnvio: parseFloat(costoEnvio ?? 0),
+      tipoEnvioId,
+      costoEnvio,
     },
   })
 
@@ -29,12 +69,12 @@ export async function POST(req: NextRequest) {
     seller: { pos_id: process.env.NAVE_POS_ID },
     transactions: [
       {
-        amount: { currency: 'ARS', value: parseFloat(total).toFixed(2) },
-        products: items.map((i: { nombre: string; cantidad: number; precio: number }) => ({
-          name: i.nombre.slice(0, 100),
-          description: i.nombre.slice(0, 100),
-          quantity: i.cantidad,
-          unit_price: { currency: 'ARS', value: i.precio.toFixed(2) },
+        amount: { currency: 'ARS', value: total.toFixed(2) },
+        products: lineas.map(l => ({
+          name: l.nombre.slice(0, 100),
+          description: l.nombre.slice(0, 100),
+          quantity: l.cantidad,
+          unit_price: { currency: 'ARS', value: l.precio.toFixed(2) },
         })),
       },
     ],
