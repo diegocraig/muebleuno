@@ -7,3 +7,8 @@ node_modules/
 *.db-wal
 *.db-shm
 public/uploads/
+
+# secretos / config local (no commitear)
+ecosystem.config.js
+ecosystem.config.js.bak*
+.env
