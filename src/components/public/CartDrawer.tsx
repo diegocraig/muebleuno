@@ -85,7 +85,7 @@ export default function CartDrawer() {
   return (
     <div className="fixed inset-0 z-50 flex">
       <div className="flex-1 bg-black/50" onClick={handleClose} />
-      <div className="w-full max-w-md bg-white flex flex-col shadow-2xl">
+      <div className="w-full max-w-md bg-white flex flex-col shadow-2xl h-full overflow-hidden">
 
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b">
@@ -125,7 +125,7 @@ export default function CartDrawer() {
             {/* ── PASO 1: Carrito ── */}
             {step === 'carrito' && (
               <>
-                <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+                <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-4">
                   {items.map(item => (
                     <div key={item.productoId} className="flex gap-3 items-center">
                       <div className="w-16 h-16 rounded-lg overflow-hidden bg-gris-fondo shrink-0">
@@ -172,8 +172,8 @@ export default function CartDrawer() {
 
             {/* ── PASO 2: Tipo de envío ── */}
             {step === 'envio' && (
-              <div className="flex-1 flex flex-col">
-                <div className="flex-1 overflow-y-auto px-6 py-5 space-y-3">
+              <div className="flex-1 min-h-0 flex flex-col">
+                <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-3">
                   {tiposEnvio.length === 0 ? (
                     <p className="text-gris-medio text-sm text-center py-8">No hay tipos de envío disponibles.</p>
                   ) : (
@@ -245,7 +245,7 @@ export default function CartDrawer() {
 
             {/* ── PASO 3a: Formulario Nave ── */}
             {step === 'nave' && (
-              <div className="flex-1 flex flex-col px-6 py-5 space-y-4">
+              <div className="flex-1 min-h-0 overflow-y-auto flex flex-col px-6 py-5 space-y-4">
                 <p className="text-sm text-gris-medio">Completá tus datos para continuar al pago seguro.</p>
                 <form onSubmit={handleNave} className="space-y-3 flex-1 flex flex-col">
                   {(['nombre', 'email', 'telefono'] as const).map(f => (
@@ -282,7 +282,7 @@ export default function CartDrawer() {
 
             {/* ── PASO 3b: Formulario Contacto ── */}
             {step === 'contacto' && (
-              <div className="flex-1 flex flex-col px-6 py-5">
+              <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5">
                 <form onSubmit={handlePedido} className="space-y-3 flex flex-col h-full">
                   {(['nombre', 'email', 'telefono'] as const).map(f => (
                     <input key={f} required type={f === 'email' ? 'email' : 'text'}
