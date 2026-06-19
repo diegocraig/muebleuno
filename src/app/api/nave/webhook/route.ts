@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
   try {
     const token = await getNaveToken()
     const res = await fetch(`${NAVE_PAYMENT_CHECK_BASE}/${payment_id}`, {
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0' },
     })
 
     if (!res.ok) return NextResponse.json({ ok: false }, { status: 200 })

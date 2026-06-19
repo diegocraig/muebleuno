@@ -20,7 +20,12 @@ export async function getNaveToken(): Promise<string> {
 
   const res = await fetch(AUTH_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      // El endpoint de auth está detrás de Cloudflare y rechaza (406 CF-1013)
+      // las peticiones sin User-Agent de navegador, como las de fetch en Node.
+      'User-Agent': 'Mozilla/5.0',
+    },
     body: JSON.stringify({
       client_id: process.env.NAVE_CLIENT_ID,
       client_secret: process.env.NAVE_CLIENT_SECRET,

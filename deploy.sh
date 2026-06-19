@@ -4,15 +4,9 @@ cd /var/www/muebleuno
 
 npm run build
 
-cp -r .next/static .next/standalone/.next/static
-
-# Copia archivos públicos estáticos al standalone
-mkdir -p .next/standalone/public
-cp -r public/* .next/standalone/public/ 2>/dev/null || true
-
-# Recrea el symlink de uploads (sobreescribe lo copiado)
-rm -rf .next/standalone/public/uploads
-ln -s /var/www/muebleuno/public/uploads .next/standalone/public/uploads
+# La app corre con `next start` (ver ecosystem.config.js), que sirve .next/
+# y public/ directamente. No se usa el output "standalone", por eso ya no se
+# copia nada a .next/standalone/. uploads vive en public/uploads (volumen real).
 
 pm2 restart muebleuno --update-env
 echo "Deploy OK"
