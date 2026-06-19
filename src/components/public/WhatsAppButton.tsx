@@ -1,7 +1,13 @@
 'use client'
 import { MessageCircle } from 'lucide-react'
+import { useCart } from './CartProvider'
 
 export default function WhatsAppButton() {
+  const { isOpen } = useCart()
+  // No mostrar el botón flotante mientras el carrito está abierto: se
+  // superpone con el footer del drawer (botón de pago).
+  if (isOpen) return null
+
   return (
     <a
       href="https://wa.me/5491173670283?text=Hola, quiero consultar sobre sus productos"
