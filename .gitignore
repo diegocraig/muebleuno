@@ -12,3 +12,7 @@ public/uploads/
 ecosystem.config.js
 ecosystem.config.js.bak*
 .env
+
+# Backups de base de datos
+*.bak
+*.db.bak*

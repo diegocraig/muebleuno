@@ -4,21 +4,34 @@ import { MessageCircle, Star } from 'lucide-react'
 import { formatPrice } from '@/lib/utils'
 
 interface PedidoItem { productoId: number; nombre: string; precio: number; cantidad: number }
+interface TipoEnvio { id: number; nombre: string; costo: number }
 interface Pedido {
   id: number; nombre: string; email: string; telefono: string
-  items: string; total: number; estado: string; notas?: string | null; creadoEn: Date
+  items: string; itemsDetalle: PedidoItem[]; total: number; estado: string
+  notas?: string | null; creadoEn: Date
+  costoEnvio?: number; tipoEnvioId?: number | null; tipoEnvio?: TipoEnvio | null
+  navePagoEstado?: string | null; navePaymentRequestId?: string | null
 }
 
-const ESTADOS = ['pendiente', 'en proceso', 'completado', 'cancelado']
+const ESTADOS = ['pendiente', 'pagado', 'en proceso', 'completado', 'rechazado', 'cancelado', 'devuelto']
 const ESTADO_COLORS: Record<string, string> = {
   pendiente: 'bg-yellow-100 text-yellow-700',
+  pagado: 'bg-green-100 text-green-700',
   'en proceso': 'bg-blue-100 text-blue-700',
   completado: 'bg-green-100 text-green-700',
+  rechazado: 'bg-red-100 text-red-700',
   cancelado: 'bg-red-100 text-red-700',
+  devuelto: 'bg-orange-100 text-orange-700',
 }
 
+const fmtFechaHora = (d: Date | string) =>
+  new Date(d).toLocaleString('es-AR', {
+    timeZone: 'America/Argentina/Buenos_Aires',
+    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  })
+
 function ModalReview({ pedido, onClose }: { pedido: Pedido; onClose: () => void }) {
-  const items = JSON.parse(pedido.items) as PedidoItem[]
+  const items = pedido.itemsDetalle
   const [form, setForm] = useState({
     autor: pedido.nombre, ciudad: '', texto: '', rating: 5,
     productoId: items[0]?.productoId ? String(items[0].productoId) : '',
@@ -142,15 +155,16 @@ export default function PedidosAdmin({ pedidos: initial }: { pedidos: Pedido[] }
       </div>
 
       <div className="grid lg:grid-cols-2 gap-4">
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div className="bg-white rounded-xl shadow-sm overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gris-fondo border-b">
               <tr>
                 <th className="text-left px-4 py-3">ID</th>
                 <th className="text-left px-4 py-3">Cliente</th>
+                <th className="text-left px-4 py-3">Teléfono</th>
                 <th className="text-left px-4 py-3">Total</th>
                 <th className="text-left px-4 py-3">Estado</th>
-                <th className="text-left px-4 py-3">Fecha</th>
+                <th className="text-left px-4 py-3">Fecha y hora</th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -159,13 +173,14 @@ export default function PedidosAdmin({ pedidos: initial }: { pedidos: Pedido[] }
                   className={`cursor-pointer hover:bg-gris-fondo/50 ${selected?.id === p.id ? 'bg-rojo-suave' : ''}`}>
                   <td className="px-4 py-3 font-mono text-xs">#{p.id}</td>
                   <td className="px-4 py-3 font-medium">{p.nombre}</td>
+                  <td className="px-4 py-3 text-gris-medio whitespace-nowrap">{p.telefono}</td>
                   <td className="px-4 py-3 font-bold">{formatPrice(p.total)}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${ESTADO_COLORS[p.estado] ?? ''}`}>
                       {p.estado}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-gris-medio">{new Date(p.creadoEn).toLocaleDateString('es-AR')}</td>
+                  <td className="px-4 py-3 text-gris-medio whitespace-nowrap">{fmtFechaHora(p.creadoEn)}</td>
                 </tr>
               ))}
             </tbody>
@@ -178,26 +193,42 @@ export default function PedidosAdmin({ pedidos: initial }: { pedidos: Pedido[] }
             <div className="flex justify-between items-start mb-4">
               <div>
                 <h2 className="font-bold text-lg">Pedido #{selected.id}</h2>
-                <p className="text-sm text-gris-medio">{new Date(selected.creadoEn).toLocaleString('es-AR')}</p>
+                <p className="text-sm text-gris-medio">{fmtFechaHora(selected.creadoEn)} hs</p>
               </div>
               <button onClick={() => setSelected(null)} className="text-gris-claro hover:text-gris-oscuro text-xl">✕</button>
             </div>
 
             <div className="space-y-2 text-sm mb-4">
               <p><span className="font-medium">Nombre:</span> {selected.nombre}</p>
-              <p><span className="font-medium">Email:</span> {selected.email}</p>
+              <p><span className="font-medium">Email:</span> <a className="text-blue-600 hover:underline" href={`mailto:${selected.email}`}>{selected.email}</a></p>
               <p><span className="font-medium">Teléfono:</span> {selected.telefono}</p>
               {selected.notas && <p><span className="font-medium">Notas:</span> {selected.notas}</p>}
+              <p>
+                <span className="font-medium">Estado del pedido:</span>{' '}
+                <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${ESTADO_COLORS[selected.estado] ?? ''}`}>{selected.estado}</span>
+              </p>
+              <p><span className="font-medium">Estado de pago (Nave):</span> {selected.navePagoEstado ?? '— sin registro —'}</p>
+              <p><span className="font-medium">Tipo de envío:</span> {selected.tipoEnvio?.nombre ?? '—'}</p>
+              <p><span className="font-medium">Costo de envío:</span> {selected.costoEnvio ? formatPrice(selected.costoEnvio) : 'Gratis / —'}</p>
+              {selected.navePaymentRequestId && (
+                <p className="break-all"><span className="font-medium">ID de pago Nave:</span> <span className="font-mono text-xs">{selected.navePaymentRequestId}</span></p>
+              )}
             </div>
 
             <h3 className="font-semibold mb-2">Items</h3>
             <div className="space-y-2 mb-4">
-              {(JSON.parse(selected.items) as PedidoItem[]).map((item, i) => (
+              {selected.itemsDetalle.map((item, i) => (
                 <div key={i} className="flex justify-between text-sm">
                   <span>{item.nombre} × {item.cantidad}</span>
                   <span className="font-bold">{formatPrice(item.precio * item.cantidad)}</span>
                 </div>
               ))}
+              {selected.costoEnvio ? (
+                <div className="flex justify-between text-sm text-gris-medio">
+                  <span>Envío {selected.tipoEnvio?.nombre ? `(${selected.tipoEnvio.nombre})` : ''}</span>
+                  <span>{formatPrice(selected.costoEnvio)}</span>
+                </div>
+              ) : null}
               <div className="flex justify-between font-bold pt-2 border-t">
                 <span>Total</span>
                 <span className="text-rojo-principal">{formatPrice(selected.total)}</span>

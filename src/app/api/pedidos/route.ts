@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/session'
 import { checkRateLimit } from '@/lib/rateLimiter'
+import { enviarReportePedido } from '@/lib/mail'
 
 export async function GET(req: NextRequest) {
   const session = await getSession()
@@ -80,5 +81,9 @@ export async function POST(req: NextRequest) {
       costoEnvio,
     },
   })
+
+  // Avisar a administración del nuevo pedido (solicitud de contacto).
+  void enviarReportePedido(pedido.id, 'nuevo-contacto')
+
   return NextResponse.json(pedido, { status: 201 })
 }

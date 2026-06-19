@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getNaveToken, NAVE_PAYMENT_URL } from '@/lib/nave'
+import { enviarReportePedido } from '@/lib/mail'
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
@@ -59,6 +60,9 @@ export async function POST(req: NextRequest) {
       costoEnvio,
     },
   })
+
+  // Avisar a administración del intento de compra (aunque el pago no se complete).
+  void enviarReportePedido(pedido.id, 'nuevo-tarjeta')
 
   const token = await getNaveToken()
 

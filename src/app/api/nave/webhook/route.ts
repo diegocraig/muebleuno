@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getNaveToken, NAVE_PAYMENT_CHECK_BASE } from '@/lib/nave'
+import { enviarReportePedido } from '@/lib/mail'
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
@@ -33,6 +34,8 @@ export async function POST(req: NextRequest) {
           estado: estadoMap[naveStatus] ?? 'pendiente',
         },
       })
+      // Avisar a administración del resultado del pago.
+      void enviarReportePedido(pedidoId, 'pago-actualizado')
     }
   } catch (e) {
     console.error('Nave webhook error:', e)
