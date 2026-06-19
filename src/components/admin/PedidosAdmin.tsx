@@ -126,7 +126,7 @@ function ModalReview({ pedido, onClose }: { pedido: Pedido; onClose: () => void 
   )
 }
 
-export default function PedidosAdmin({ pedidos: initial }: { pedidos: Pedido[] }) {
+export default function PedidosAdmin({ pedidos: initial, heading = 'Pedidos' }: { pedidos: Pedido[]; heading?: string }) {
   const [pedidos, setPedidos] = useState(initial)
   const [selected, setSelected] = useState<Pedido | null>(null)
   const [filtroEstado, setFiltroEstado] = useState('')
@@ -146,7 +146,7 @@ export default function PedidosAdmin({ pedidos: initial }: { pedidos: Pedido[] }
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Pedidos</h1>
+        <h1 className="text-2xl font-bold">{heading}</h1>
         <select value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)}
           className="border rounded-lg px-3 py-2 text-sm">
           <option value="">Todos los estados</option>

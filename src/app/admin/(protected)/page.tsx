@@ -1,6 +1,8 @@
 import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
 import { Package, Layers, ShoppingBag, Clock } from 'lucide-react'
+import PedidosAdmin from '@/components/admin/PedidosAdmin'
+import { getPedidosEnriquecidos } from '@/lib/pedidos'
 
 export default async function AdminDashboard() {
   const [totalProductos, totalCategorias, pedidosPendientes, pedidosMes, ultimosPedidos] = await Promise.all([
@@ -10,7 +12,7 @@ export default async function AdminDashboard() {
     prisma.pedido.count({
       where: { creadoEn: { gte: new Date(new Date().setDate(1)) } },
     }),
-    prisma.pedido.findMany({ orderBy: { creadoEn: 'desc' }, take: 5 }),
+    getPedidosEnriquecidos({ take: 10 }),
   ])
 
   const cards = [
@@ -38,49 +40,17 @@ export default async function AdminDashboard() {
         ))}
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm p-6">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="font-bold text-lg">Últimos Pedidos</h2>
-          <Link href="/admin/pedidos" className="text-sm text-rojo-principal hover:underline">Ver todos</Link>
-        </div>
-        {ultimosPedidos.length === 0 ? (
-          <p className="text-gris-medio text-sm">Sin pedidos aún</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-gris-medio">
-                  <th className="text-left pb-2">ID</th>
-                  <th className="text-left pb-2">Cliente</th>
-                  <th className="text-left pb-2">Total</th>
-                  <th className="text-left pb-2">Estado</th>
-                  <th className="text-left pb-2">Fecha</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {ultimosPedidos.map(p => (
-                  <tr key={p.id}>
-                    <td className="py-2 font-mono text-xs">#{p.id}</td>
-                    <td className="py-2">{p.nombre}</td>
-                    <td className="py-2 font-bold">${p.total.toLocaleString('es-AR')}</td>
-                    <td className="py-2">
-                      <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${
-                        p.estado === 'pendiente' ? 'bg-yellow-100 text-yellow-700' :
-                        p.estado === 'completado' ? 'bg-green-100 text-green-700' :
-                        p.estado === 'cancelado' ? 'bg-red-100 text-red-700' :
-                        'bg-blue-100 text-blue-700'
-                      }`}>
-                        {p.estado}
-                      </span>
-                    </td>
-                    <td className="py-2 text-gris-medio">{new Date(p.creadoEn).toLocaleDateString('es-AR')}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+      <div className="flex justify-end mb-2">
+        <Link href="/admin/pedidos" className="text-sm text-rojo-principal hover:underline">Ver todos los pedidos</Link>
       </div>
+      {ultimosPedidos.length === 0 ? (
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <h2 className="font-bold text-lg mb-2">Últimos pedidos</h2>
+          <p className="text-gris-medio text-sm">Sin pedidos aún</p>
+        </div>
+      ) : (
+        <PedidosAdmin pedidos={ultimosPedidos} heading="Últimos pedidos" />
+      )}
     </div>
   )
 }
