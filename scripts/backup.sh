@@ -1,9 +1,15 @@
 #!/bin/bash
 # ============================================================================
-# Backup automático de muebleuno.com
+# Backup automático de muebleuno.com  (respaldo COMPLETO)
 #   - Snapshot consistente de la base de datos SQLite (sqlite3 .backup)
 #   - Copia completa de la carpeta de imágenes (public/uploads)
+#   - Código y configuración del proyecto (app/) para reconstruirlo desde cero,
+#     excluyendo lo que se regenera (node_modules, .next) o vive en git (.git)
+#   - Configuración del sistema (config/): nginx, crontab, scripts de /home
 #   - Comprimido en un único .tar.gz con manifest.json
+#
+# El layout db/ + uploads/ se mantiene intacto para que restore.sh (panel web)
+# siga funcionando; app/ y config/ son adicionales para recuperación total.
 #
 # Uso:
 #   backup.sh daily    -> backup diario + rotación + promoción a "completo" + Drive
@@ -65,9 +71,32 @@ if [ -d "$UPLOADS_DIR" ]; then
   cp -a "$UPLOADS_DIR/." "$TMP/uploads/" 2>/dev/null || true
 fi
 
+# --- Código y configuración del proyecto (app/) -----------------------------
+# Todo lo necesario para reconstruir el sitio desde cero, EXCEPTO:
+#   - node_modules y .next : se regeneran con npm install + build
+#   - .git                 : el código vive en GitHub (y evita guardar el token)
+#   - public/uploads       : ya va en uploads/, no se duplica
+mkdir -p "$TMP/app" "$TMP/config"
+if [ -d "$APP_DIR" ]; then
+  tar -C "$APP_DIR" \
+      --exclude='./node_modules' \
+      --exclude='./.next' \
+      --exclude='./.git' \
+      --exclude='./public/uploads' \
+      -cf - . 2>/dev/null | tar -C "$TMP/app" -xf - 2>/dev/null || true
+fi
+
+# --- Configuración del sistema (config/) ------------------------------------
+# Lo que vive fuera del proyecto y hace falta para dejar el server igual.
+cp -a /etc/nginx/sites-available "$TMP/config/nginx-sites-available" 2>/dev/null || true
+cp -a /home/ubuntu/scripts        "$TMP/config/home-scripts"         2>/dev/null || true
+crontab -l > "$TMP/config/crontab.ubuntu.txt" 2>/dev/null || true
+
 # --- Manifest ---------------------------------------------------------------
 DB_SIZE=$(stat -c%s "$TMP/db/muebleuno.db" 2>/dev/null || echo 0)
 UP_COUNT=$(find "$TMP/uploads" -type f 2>/dev/null | wc -l | tr -d ' ')
+APP_COUNT=$(find "$TMP/app" -type f 2>/dev/null | wc -l | tr -d ' ')
+CFG_COUNT=$(find "$TMP/config" -type f 2>/dev/null | wc -l | tr -d ' ')
 COMMIT=$(git -C "$APP_DIR" rev-parse --short HEAD 2>/dev/null || echo "unknown")
 cat > "$TMP/manifest.json" <<EOF
 {
@@ -75,13 +104,15 @@ cat > "$TMP/manifest.json" <<EOF
   "mode": "$MODE",
   "db_bytes": $DB_SIZE,
   "uploads_files": $UP_COUNT,
+  "app_files": $APP_COUNT,
+  "config_files": $CFG_COUNT,
   "app_commit": "$COMMIT",
   "hostname": "$(hostname)"
 }
 EOF
 
 # --- Comprimir --------------------------------------------------------------
-tar -czf "$DEST_DIR/$NAME" -C "$TMP" db uploads manifest.json
+tar -czf "$DEST_DIR/$NAME" -C "$TMP" db uploads app config manifest.json
 SIZE=$(du -h "$DEST_DIR/$NAME" | cut -f1)
 log "Backup creado: $DEST_DIR/$NAME ($SIZE)"
 echo "$DEST_DIR/$NAME"   # ruta del archivo creado (la consume la app)
