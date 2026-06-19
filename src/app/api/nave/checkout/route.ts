@@ -80,7 +80,7 @@ export async function POST(req: NextRequest) {
     ],
     buyer: { name: nombre, user_email: email, phone: telefono },
     additional_info: {
-      callback_url: `${siteUrl}/pago-exitoso?pedido=${pedido.id}`,
+      callback_url: `${siteUrl}/estado-pago?pedido=${pedido.id}`,
       notification_url: `${siteUrl}/api/nave/webhook`,
     },
     duration_time: 3600,
