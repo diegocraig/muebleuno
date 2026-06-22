@@ -77,6 +77,7 @@ export async function POST(req: NextRequest) {
       total,
       estado: 'pendiente',
       notas: body.notas,
+      direccion: body.direccion || null,
       tipoEnvioId,
       costoEnvio,
     },

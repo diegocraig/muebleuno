@@ -5,7 +5,7 @@ import { enviarReportePedido } from '@/lib/mail'
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
-  const { nombre, email, telefono, notas } = body
+  const { nombre, email, telefono, notas, direccion } = body
   const rawItems: { productoId: number; cantidad: number }[] = body.items ?? []
 
   // Recalcular precios desde la DB — no confiar en el precio/total del cliente
@@ -53,6 +53,7 @@ export async function POST(req: NextRequest) {
       email,
       telefono,
       notas: notas || null,
+      direccion: direccion || null,
       items: JSON.stringify(rawItems),
       total,
       estado: 'pendiente',

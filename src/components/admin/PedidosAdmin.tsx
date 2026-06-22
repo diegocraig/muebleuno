@@ -1,14 +1,14 @@
 'use client'
 import { useState } from 'react'
 import { MessageCircle, Star } from 'lucide-react'
-import { formatPrice } from '@/lib/utils'
+import { formatPrice, displayPedidoId } from '@/lib/utils'
 
 interface PedidoItem { productoId: number; nombre: string; precio: number; cantidad: number; slug?: string }
 interface TipoEnvio { id: number; nombre: string; costo: number }
 interface Pedido {
   id: number; nombre: string; email: string; telefono: string
   items: string; itemsDetalle: PedidoItem[]; total: number; estado: string
-  notas?: string | null; creadoEn: Date
+  notas?: string | null; direccion?: string | null; creadoEn: Date
   costoEnvio?: number; tipoEnvioId?: number | null; tipoEnvio?: TipoEnvio | null
   navePagoEstado?: string | null; navePaymentRequestId?: string | null
 }
@@ -56,7 +56,7 @@ function ModalReview({ pedido, onClose }: { pedido: Pedido; onClose: () => void 
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
         <div className="flex justify-between items-center px-6 py-4 border-b">
-          <h2 className="font-bold text-lg">Cargar reseña del pedido #{pedido.id}</h2>
+          <h2 className="font-bold text-lg">Cargar reseña del pedido #{displayPedidoId(pedido.id)}</h2>
           <button onClick={onClose} className="text-gris-claro hover:text-gris-oscuro text-xl">✕</button>
         </div>
         {done ? (
@@ -172,7 +172,7 @@ export default function PedidosAdmin({ pedidos: initial, heading = 'Pedidos' }: 
               {filtrados.map(p => (
                 <tr key={p.id} onClick={() => setSelected(p)}
                   className={`cursor-pointer hover:bg-gris-fondo/50 ${selected?.id === p.id ? 'bg-rojo-suave' : ''}`}>
-                  <td className="px-2 @lg:px-4 py-3 font-mono text-xs align-top">#{p.id}</td>
+                  <td className="px-2 @lg:px-4 py-3 font-mono text-xs align-top">#{displayPedidoId(p.id)}</td>
                   <td className="px-2 @lg:px-4 py-3 font-medium break-words">
                     {p.nombre}
                     {/* Cuando el bloque es angosto, las columnas que se ocultan se muestran acá en chiquito */}
@@ -198,7 +198,7 @@ export default function PedidosAdmin({ pedidos: initial, heading = 'Pedidos' }: 
           <div className="bg-white rounded-xl shadow-sm p-6">
             <div className="flex justify-between items-start mb-4">
               <div>
-                <h2 className="font-bold text-lg">Pedido #{selected.id}</h2>
+                <h2 className="font-bold text-lg">Pedido #{displayPedidoId(selected.id)}</h2>
                 <p className="text-sm text-gris-medio">{fmtFechaHora(selected.creadoEn)} hs</p>
               </div>
               <button onClick={() => setSelected(null)} className="text-gris-claro hover:text-gris-oscuro text-xl">✕</button>
@@ -208,6 +208,7 @@ export default function PedidosAdmin({ pedidos: initial, heading = 'Pedidos' }: 
               <p><span className="font-medium">Nombre:</span> {selected.nombre}</p>
               <p><span className="font-medium">Email:</span> <a className="text-blue-600 hover:underline" href={`mailto:${selected.email}`}>{selected.email}</a></p>
               <p><span className="font-medium">Teléfono:</span> {selected.telefono}</p>
+              {selected.direccion && <p className="whitespace-pre-line"><span className="font-medium">Dirección de envío:</span> {selected.direccion}</p>}
               {selected.notas && <p><span className="font-medium">Notas:</span> {selected.notas}</p>}
               <p>
                 <span className="font-medium">Estado del pedido:</span>{' '}
@@ -262,7 +263,7 @@ export default function PedidosAdmin({ pedidos: initial, heading = 'Pedidos' }: 
                 </select>
               </div>
               <a
-                href={`https://wa.me/${selected.telefono.replace(/\D/g, '')}?text=Hola ${selected.nombre}, te contactamos por tu pedido #${selected.id}`}
+                href={`https://wa.me/${selected.telefono.replace(/\D/g, '')}?text=Hola ${selected.nombre}, te contactamos por tu pedido #${displayPedidoId(selected.id)}`}
                 target="_blank" rel="noopener noreferrer"
                 className="flex items-center gap-1 bg-green-500 hover:bg-green-600 text-white text-sm font-semibold px-3 py-2 rounded-lg"
               >

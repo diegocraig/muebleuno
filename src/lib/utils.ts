@@ -21,3 +21,11 @@ export function slugify(text: string): string {
 export function formatPrice(price: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(price)
 }
+
+// Offset de marketing para el número de pedido VISIBLE. El id real en la base de
+// datos no cambia (sigue usándose para URLs, Nave, etc.); esto sólo afecta lo que
+// ve el usuario, para que la numeración no arranque en valores bajos.
+export const PEDIDO_ID_OFFSET = 3273
+export function displayPedidoId(id: number): number {
+  return id + PEDIDO_ID_OFFSET
+}

@@ -1,6 +1,6 @@
 import { spawn } from 'child_process'
 import { prisma } from './prisma'
-import { formatPrice } from './utils'
+import { formatPrice, displayPedidoId } from './utils'
 
 // Envío de correo vía msmtp (Gmail/Workspace 587, configurado en ~/.msmtprc del server).
 // El From debe ser la cuenta autenticada en msmtp (ventas@muebleuno.com); el
@@ -47,9 +47,9 @@ interface ItemRaw { productoId: number; cantidad: number; nombre?: string; preci
 type TipoEvento = 'nuevo-tarjeta' | 'nuevo-contacto' | 'pago-actualizado'
 
 const ASUNTOS: Record<TipoEvento, (id: number) => string> = {
-  'nuevo-tarjeta': (id) => `🛒 Nuevo intento de compra (pago con tarjeta/QR) — Pedido #${id}`,
-  'nuevo-contacto': (id) => `🛒 Nuevo pedido (solicitud de contacto) — Pedido #${id}`,
-  'pago-actualizado': (id) => `💳 Pago actualizado — Pedido #${id}`,
+  'nuevo-tarjeta': (id) => `🛒 Nuevo intento de compra (pago con tarjeta/QR) — Pedido #${displayPedidoId(id)}`,
+  'nuevo-contacto': (id) => `🛒 Nuevo pedido (solicitud de contacto) — Pedido #${displayPedidoId(id)}`,
+  'pago-actualizado': (id) => `💳 Pago actualizado — Pedido #${displayPedidoId(id)}`,
 }
 
 /**
@@ -102,7 +102,7 @@ export async function enviarReportePedido(pedidoId: number, evento: TipoEvento):
 
     const html = `
 <div style="font-family:Arial,Helvetica,sans-serif;max-width:600px;margin:auto;color:#222">
-  <h2 style="color:#c81e1e;margin:0 0 4px">Pedido #${pedido.id}</h2>
+  <h2 style="color:#c81e1e;margin:0 0 4px">Pedido #${displayPedidoId(pedido.id)}</h2>
   <p style="margin:0 0 16px;color:#666">${fecha}</p>
 
   <table style="border-collapse:collapse;font-size:14px;margin-bottom:16px">
@@ -111,6 +111,7 @@ export async function enviarReportePedido(pedidoId: number, evento: TipoEvento):
     ${row('Nombre', escapeHtml(pedido.nombre))}
     ${row('Email', `<a href="mailto:${escapeHtml(pedido.email)}">${escapeHtml(pedido.email)}</a>`)}
     ${row('Teléfono', `${escapeHtml(pedido.telefono)} &nbsp; <a href="https://wa.me/${telLimpio}">WhatsApp</a>`)}
+    ${pedido.direccion ? row('Dirección de envío', escapeHtml(pedido.direccion).replace(/\n/g, '<br>')) : ''}
     ${pedido.notas ? row('Notas', escapeHtml(pedido.notas)) : ''}
     ${row('Tipo de envío', pedido.tipoEnvio ? escapeHtml(pedido.tipoEnvio.nombre) : '—')}
     ${row('Costo de envío', pedido.costoEnvio ? formatPrice(pedido.costoEnvio) : 'Gratis / —')}
@@ -127,7 +128,7 @@ export async function enviarReportePedido(pedidoId: number, evento: TipoEvento):
     </tfoot>
   </table>
 
-  <p style="margin-top:24px;font-size:12px;color:#999">Reporte automático de muebleuno.com — Pedido #${pedido.id}. Respondé este correo para contactar al cliente.</p>
+  <p style="margin-top:24px;font-size:12px;color:#999">Reporte automático de muebleuno.com — Pedido #${displayPedidoId(pedido.id)}. Respondé este correo para contactar al cliente.</p>
 </div>`
 
     await enviarMail({ subject: ASUNTOS[evento](pedido.id), html, replyTo: pedido.email })
@@ -183,6 +184,10 @@ export async function enviarConfirmacionCompra(pedidoId: number): Promise<void> 
       ? `<tr><td colspan="2" style="padding:2px 8px 2px 0;text-align:right;color:#888">Envío${pedido.tipoEnvio ? ` (${escapeHtml(pedido.tipoEnvio.nombre)})` : ''}</td><td style="padding:2px 0;text-align:right;white-space:nowrap">${formatPrice(pedido.costoEnvio)}</td></tr>`
       : ''
 
+    const direccionBloque = pedido.direccion
+      ? `<div style="padding:0 28px"><div style="background:#fff8f0;border:1px solid #f0e0cc;border-radius:12px;padding:14px 18px"><p style="margin:0 0 4px;font-weight:700;color:#222">📍 Dirección de envío</p><p style="margin:0;color:#555;font-size:14px;line-height:1.5">${escapeHtml(pedido.direccion).replace(/\n/g, '<br>')}</p></div></div>`
+      : ''
+
     const html = `
 <div style="font-family:Arial,Helvetica,sans-serif;max-width:600px;margin:auto;color:#222;background:#ffffff">
   <div style="background:#C0272D;padding:24px;text-align:center">
@@ -193,9 +198,10 @@ export async function enviarConfirmacionCompra(pedidoId: number): Promise<void> 
     <h1 style="font-size:22px;margin:0 0 6px;color:#222">¡Gracias por tu compra, ${escapeHtml(primerNombre)}! 🎉</h1>
     <p style="margin:0 0 16px;color:#555;line-height:1.5">
       Tu pago fue <strong style="color:#1a8f3c">confirmado</strong>. Ya registramos tu pedido
-      <strong>#${pedido.id}</strong>. <strong>Nos contactaremos a la brevedad para coordinar la entrega.</strong>
+      <strong>#${displayPedidoId(pedido.id)}</strong>. <strong>Nos contactaremos a la brevedad para coordinar la entrega.</strong>
     </p>
   </div>
+  ${direccionBloque}
 
   <div style="padding:0 28px">
     <h3 style="margin:18px 0 8px;font-size:15px;color:#222">Detalle de tu compra</h3>
@@ -233,7 +239,7 @@ export async function enviarConfirmacionCompra(pedidoId: number): Promise<void> 
 
     await enviarMail({
       to: pedido.email,
-      subject: `¡Gracias por tu compra! — Pedido #${pedido.id}`,
+      subject: `¡Gracias por tu compra! — Pedido #${displayPedidoId(pedido.id)}`,
       html,
     })
   } catch (e) {

@@ -14,7 +14,7 @@ export default function CartDrawer() {
   } = useCart()
 
   const [step, setStep] = useState<Step>('carrito')
-  const [form, setForm] = useState({ nombre: '', email: '', telefono: '', notas: '' })
+  const [form, setForm] = useState({ nombre: '', email: '', telefono: '', notas: '', direccion: '' })
   const [sending, setSending] = useState(false)
   const [sent, setSent] = useState(false)
   const [error, setError] = useState('')
@@ -254,6 +254,16 @@ export default function CartDrawer() {
                       value={form[f]} onChange={e => setForm(prev => ({ ...prev, [f]: e.target.value }))}
                       className="w-full border rounded-lg px-3 py-2.5 text-sm" />
                   ))}
+                  <div>
+                    <textarea required rows={3}
+                      placeholder="Dirección de envío"
+                      value={form.direccion}
+                      onChange={e => setForm(prev => ({ ...prev, direccion: e.target.value }))}
+                      className="w-full border rounded-lg px-3 py-2.5 text-sm resize-none" />
+                    <p className="text-xs text-gris-medio mt-1">
+                      Indicá calle y número, localidad y provincia. Explicá claramente cómo llegar (entre qué calles, color/tipo de casa, referencias) para asegurar la entrega.
+                    </p>
+                  </div>
                   {/* Resumen compacto */}
                   <div className="bg-gris-fondo rounded-lg px-4 py-3 text-sm space-y-1 mt-auto">
                     <div className="flex justify-between text-gris-medio">

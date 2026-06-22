@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { CheckCircle, Clock, XCircle, RotateCcw, HelpCircle } from 'lucide-react'
 import { prisma } from '@/lib/prisma'
+import { displayPedidoId } from '@/lib/utils'
 import AutoRefresh from './AutoRefresh'
 
 export const dynamic = 'force-dynamic'
@@ -81,7 +82,7 @@ export default async function EstadoPagoPage({ searchParams }: PageProps) {
 
         {pedido && (
           <p className="text-sm text-gris-medio mb-6">
-            Pedido <span className="font-bold">#{pedido.id}</span>
+            Pedido <span className="font-bold">#{displayPedidoId(pedido.id)}</span>
           </p>
         )}
 
