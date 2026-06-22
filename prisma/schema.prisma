@@ -128,7 +128,7 @@ model Usuario {
   email    String @unique
   password String
   nombre   String
-  rol      String @default("admin")
+  rol      String @default("user")
 }
 
 model MedidaConfig {
