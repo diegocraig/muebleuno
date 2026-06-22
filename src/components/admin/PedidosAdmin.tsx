@@ -208,7 +208,7 @@ export default function PedidosAdmin({ pedidos: initial, heading = 'Pedidos' }: 
               <p><span className="font-medium">Nombre:</span> {selected.nombre}</p>
               <p><span className="font-medium">Email:</span> <a className="text-blue-600 hover:underline" href={`mailto:${selected.email}`}>{selected.email}</a></p>
               <p><span className="font-medium">Teléfono:</span> {selected.telefono}</p>
-              {selected.direccion && <p className="whitespace-pre-line"><span className="font-medium">Dirección de envío:</span> {selected.direccion}</p>}
+              <p className="whitespace-pre-line"><span className="font-medium">Dirección de envío:</span> {selected.direccion || '—'}</p>
               {selected.notas && <p><span className="font-medium">Notas:</span> {selected.notas}</p>}
               <p>
                 <span className="font-medium">Estado del pedido:</span>{' '}
