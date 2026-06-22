@@ -156,37 +156,37 @@ export default function PedidosAdmin({ pedidos: initial, heading = 'Pedidos' }: 
       </div>
 
       <div className="grid lg:grid-cols-2 gap-4">
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div className="@container bg-white rounded-xl shadow-sm overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-gris-fondo border-b">
               <tr>
-                <th className="text-left px-2 sm:px-4 py-3">ID</th>
-                <th className="text-left px-2 sm:px-4 py-3">Cliente</th>
-                <th className="text-left px-4 py-3 hidden lg:table-cell">Teléfono</th>
-                <th className="text-left px-2 sm:px-4 py-3">Total</th>
-                <th className="text-left px-2 sm:px-4 py-3">Estado</th>
-                <th className="text-left px-4 py-3 hidden md:table-cell">Fecha y hora</th>
+                <th className="text-left px-2 @lg:px-4 py-3">ID</th>
+                <th className="text-left px-2 @lg:px-4 py-3">Cliente</th>
+                <th className="text-left px-4 py-3 hidden @2xl:table-cell">Teléfono</th>
+                <th className="text-left px-2 @lg:px-4 py-3">Total</th>
+                <th className="text-left px-2 @lg:px-4 py-3">Estado</th>
+                <th className="text-left px-4 py-3 hidden @lg:table-cell">Fecha y hora</th>
               </tr>
             </thead>
             <tbody className="divide-y">
               {filtrados.map(p => (
                 <tr key={p.id} onClick={() => setSelected(p)}
                   className={`cursor-pointer hover:bg-gris-fondo/50 ${selected?.id === p.id ? 'bg-rojo-suave' : ''}`}>
-                  <td className="px-2 sm:px-4 py-3 font-mono text-xs">#{p.id}</td>
-                  <td className="px-2 sm:px-4 py-3 font-medium break-words">
+                  <td className="px-2 @lg:px-4 py-3 font-mono text-xs align-top">#{p.id}</td>
+                  <td className="px-2 @lg:px-4 py-3 font-medium break-words">
                     {p.nombre}
-                    {/* En pantallas chicas, las columnas que se ocultan se muestran acá en chiquito */}
-                    <span className="block lg:hidden text-xs font-normal text-gris-medio">{p.telefono}</span>
-                    <span className="block md:hidden text-xs font-normal text-gris-medio">{fmtFechaHora(p.creadoEn)}</span>
+                    {/* Cuando el bloque es angosto, las columnas que se ocultan se muestran acá en chiquito */}
+                    <span className="block @2xl:hidden text-xs font-normal text-gris-medio">{p.telefono}</span>
+                    <span className="block @lg:hidden text-xs font-normal text-gris-medio">{fmtFechaHora(p.creadoEn)}</span>
                   </td>
-                  <td className="px-4 py-3 text-gris-medio whitespace-nowrap hidden lg:table-cell">{p.telefono}</td>
-                  <td className="px-2 sm:px-4 py-3 font-bold whitespace-nowrap">{formatPrice(p.total)}</td>
-                  <td className="px-2 sm:px-4 py-3">
+                  <td className="px-4 py-3 text-gris-medio whitespace-nowrap hidden @2xl:table-cell align-top">{p.telefono}</td>
+                  <td className="px-2 @lg:px-4 py-3 font-bold whitespace-nowrap align-top">{formatPrice(p.total)}</td>
+                  <td className="px-2 @lg:px-4 py-3 align-top">
                     <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${ESTADO_COLORS[p.estado] ?? ''}`}>
                       {p.estado}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-gris-medio whitespace-nowrap hidden md:table-cell">{fmtFechaHora(p.creadoEn)}</td>
+                  <td className="px-4 py-3 text-gris-medio whitespace-nowrap hidden @lg:table-cell align-top">{fmtFechaHora(p.creadoEn)}</td>
                 </tr>
               ))}
             </tbody>
