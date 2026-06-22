@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getNaveToken, NAVE_PAYMENT_CHECK_BASE } from '@/lib/nave'
-import { enviarReportePedido } from '@/lib/mail'
+import { enviarReportePedido, enviarConfirmacionCompra } from '@/lib/mail'
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
@@ -36,6 +36,17 @@ export async function POST(req: NextRequest) {
       })
       // Avisar a administración del resultado del pago.
       void enviarReportePedido(pedidoId, 'pago-actualizado')
+
+      // Si el pago fue aprobado, mandar al comprador el correo de agradecimiento
+      // con el detalle. Claim atómico: marca confirmacionEnviada=true sólo si
+      // estaba en false, así un reintento del webhook no genera correos duplicados.
+      if (naveStatus === 'APPROVED') {
+        const claim = await prisma.pedido.updateMany({
+          where: { id: pedidoId, confirmacionEnviada: false },
+          data: { confirmacionEnviada: true },
+        })
+        if (claim.count > 0) void enviarConfirmacionCompra(pedidoId)
+      }
     }
   } catch (e) {
     console.error('Nave webhook error:', e)

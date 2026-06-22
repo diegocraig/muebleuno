@@ -94,6 +94,7 @@ model Pedido {
   tipoEnvioId          Int?
   tipoEnvio            TipoEnvio? @relation(fields: [tipoEnvioId], references: [id], onDelete: SetNull)
   costoEnvio           Float      @default(0)
+  confirmacionEnviada  Boolean    @default(false)
   creadoEn             DateTime   @default(now())
 }
 

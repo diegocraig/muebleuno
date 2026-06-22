@@ -136,6 +136,111 @@ export async function enviarReportePedido(pedidoId: number, evento: TipoEvento):
   }
 }
 
+function capitalizar(s: string): string {
+  return s.trim().split(/\s+/).map(w => w ? w[0].toUpperCase() + w.slice(1).toLowerCase() : w).join(' ')
+}
+
+/**
+ * Envía al COMPRADOR un correo de agradecimiento con el detalle de su compra,
+ * tras un pago aprobado. Tolerante a fallos: nunca lanza.
+ */
+export async function enviarConfirmacionCompra(pedidoId: number): Promise<void> {
+  try {
+    const pedido = await prisma.pedido.findUnique({
+      where: { id: pedidoId },
+      include: { tipoEnvio: true },
+    })
+    if (!pedido || !pedido.email) return
+
+    const items: ItemRaw[] = JSON.parse(pedido.items || '[]')
+    const ids = items.map(i => i.productoId).filter(Boolean)
+    const productos = ids.length
+      ? await prisma.producto.findMany({
+          where: { id: { in: ids } },
+          select: { id: true, nombre: true, precio: true, precioOferta: true },
+        })
+      : []
+    const pmap = new Map(productos.map(p => [p.id, p]))
+
+    const lineas = items.map(i => {
+      const prod = pmap.get(i.productoId)
+      const nombre = i.nombre ?? prod?.nombre ?? `Producto #${i.productoId}`
+      const precio = i.precio ?? prod?.precioOferta ?? prod?.precio ?? 0
+      return { nombre, cantidad: i.cantidad, subtotal: precio * i.cantidad }
+    })
+    const subtotalProductos = lineas.reduce((a, l) => a + l.subtotal, 0)
+    const primerNombre = capitalizar(pedido.nombre.split(/\s+/)[0] || pedido.nombre)
+    const telLimpio = pedido.telefono.replace(/\D/g, '')
+
+    const itemsHtml = lineas.map(l => `
+        <tr>
+          <td style="padding:8px 0;border-bottom:1px solid #f0f0f0">${escapeHtml(l.nombre)}</td>
+          <td style="padding:8px 8px;border-bottom:1px solid #f0f0f0;text-align:center">${l.cantidad}</td>
+          <td style="padding:8px 0;border-bottom:1px solid #f0f0f0;text-align:right;white-space:nowrap">${formatPrice(l.subtotal)}</td>
+        </tr>`).join('')
+
+    const envioRow = pedido.costoEnvio
+      ? `<tr><td colspan="2" style="padding:2px 8px 2px 0;text-align:right;color:#888">Envío${pedido.tipoEnvio ? ` (${escapeHtml(pedido.tipoEnvio.nombre)})` : ''}</td><td style="padding:2px 0;text-align:right;white-space:nowrap">${formatPrice(pedido.costoEnvio)}</td></tr>`
+      : ''
+
+    const html = `
+<div style="font-family:Arial,Helvetica,sans-serif;max-width:600px;margin:auto;color:#222;background:#ffffff">
+  <div style="background:#C0272D;padding:24px;text-align:center">
+    <span style="color:#fff;font-size:22px;font-weight:800;letter-spacing:.5px">MuebleUno</span>
+  </div>
+
+  <div style="padding:28px 28px 8px">
+    <h1 style="font-size:22px;margin:0 0 6px;color:#222">¡Gracias por tu compra, ${escapeHtml(primerNombre)}! 🎉</h1>
+    <p style="margin:0 0 16px;color:#555;line-height:1.5">
+      Tu pago fue <strong style="color:#1a8f3c">confirmado</strong>. Ya registramos tu pedido
+      <strong>#${pedido.id}</strong>. <strong>Nos contactaremos a la brevedad para coordinar la entrega.</strong>
+    </p>
+  </div>
+
+  <div style="padding:0 28px">
+    <h3 style="margin:18px 0 8px;font-size:15px;color:#222">Detalle de tu compra</h3>
+    <table style="width:100%;border-collapse:collapse;font-size:14px">
+      <thead>
+        <tr style="color:#888;text-align:left">
+          <th style="padding:6px 0;border-bottom:2px solid #eee;font-weight:600">Producto</th>
+          <th style="padding:6px 8px;border-bottom:2px solid #eee;font-weight:600;text-align:center">Cant.</th>
+          <th style="padding:6px 0;border-bottom:2px solid #eee;font-weight:600;text-align:right">Subtotal</th>
+        </tr>
+      </thead>
+      <tbody>${itemsHtml}</tbody>
+      <tfoot>
+        <tr><td colspan="2" style="padding:8px 8px 2px 0;text-align:right;color:#888">Subtotal productos</td><td style="padding:8px 0 2px;text-align:right;white-space:nowrap">${formatPrice(subtotalProductos)}</td></tr>
+        ${envioRow}
+        <tr><td colspan="2" style="padding:10px 8px 0 0;text-align:right;font-weight:800;font-size:16px">Total</td><td style="padding:10px 0 0;text-align:right;font-weight:800;font-size:16px;color:#C0272D;white-space:nowrap">${formatPrice(pedido.total)}</td></tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <div style="padding:24px 28px">
+    <div style="background:#f7f7f7;border-radius:12px;padding:16px 18px">
+      <p style="margin:0 0 4px;font-weight:700;color:#222">¿Dudas sobre tu pedido?</p>
+      <p style="margin:0;color:#555;font-size:14px;line-height:1.5">
+        Escribinos a <a href="mailto:ventas@muebleuno.com" style="color:#C0272D">ventas@muebleuno.com</a>${telLimpio ? `
+        o por WhatsApp al <a href="https://wa.me/${telLimpio}" style="color:#C0272D">${escapeHtml(pedido.telefono)}</a>` : ''}.
+      </p>
+    </div>
+  </div>
+
+  <div style="background:#fafafa;padding:18px 28px;text-align:center;border-top:1px solid #eee">
+    <p style="margin:0;font-size:12px;color:#aaa">MuebleUno · Gracias por confiar en nosotros · muebleuno.com</p>
+  </div>
+</div>`
+
+    await enviarMail({
+      to: pedido.email,
+      subject: `¡Gracias por tu compra! — Pedido #${pedido.id}`,
+      html,
+    })
+  } catch (e) {
+    console.error('enviarConfirmacionCompra error:', e)
+  }
+}
+
 function escapeHtml(s: string): string {
   return String(s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
