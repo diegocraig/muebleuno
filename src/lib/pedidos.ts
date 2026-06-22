@@ -5,6 +5,7 @@ export interface PedidoItemDetalle {
   nombre: string
   precio: number
   cantidad: number
+  slug?: string
 }
 
 const parseItems = (s: string): { productoId: number; cantidad: number; nombre?: string; precio?: number }[] => {
@@ -27,7 +28,7 @@ export async function getPedidosEnriquecidos(opts?: { take?: number }) {
   const productos = allIds.length
     ? await prisma.producto.findMany({
         where: { id: { in: allIds } },
-        select: { id: true, nombre: true, precio: true, precioOferta: true },
+        select: { id: true, nombre: true, precio: true, precioOferta: true, slug: true },
       })
     : []
   const pmap = new Map(productos.map(p => [p.id, p]))
@@ -41,6 +42,7 @@ export async function getPedidosEnriquecidos(opts?: { take?: number }) {
         nombre: i.nombre ?? prod?.nombre ?? `Producto #${i.productoId}`,
         cantidad: i.cantidad,
         precio: i.precio ?? prod?.precioOferta ?? prod?.precio ?? 0,
+        slug: prod?.slug,
       }
     }),
   }))

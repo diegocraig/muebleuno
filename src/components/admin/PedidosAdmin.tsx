@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { MessageCircle, Star } from 'lucide-react'
 import { formatPrice } from '@/lib/utils'
 
-interface PedidoItem { productoId: number; nombre: string; precio: number; cantidad: number }
+interface PedidoItem { productoId: number; nombre: string; precio: number; cantidad: number; slug?: string }
 interface TipoEnvio { id: number; nombre: string; costo: number }
 interface Pedido {
   id: number; nombre: string; email: string; telefono: string
@@ -128,7 +128,8 @@ function ModalReview({ pedido, onClose }: { pedido: Pedido; onClose: () => void 
 
 export default function PedidosAdmin({ pedidos: initial, heading = 'Pedidos' }: { pedidos: Pedido[]; heading?: string }) {
   const [pedidos, setPedidos] = useState(initial)
-  const [selected, setSelected] = useState<Pedido | null>(null)
+  // Al ingresar, mostrar el pedido más reciente (los pedidos vienen ordenados por fecha desc).
+  const [selected, setSelected] = useState<Pedido | null>(initial[0] ?? null)
   const [filtroEstado, setFiltroEstado] = useState('')
   const [reviewPedido, setReviewPedido] = useState<Pedido | null>(null)
 
@@ -155,32 +156,32 @@ export default function PedidosAdmin({ pedidos: initial, heading = 'Pedidos' }: 
       </div>
 
       <div className="grid lg:grid-cols-2 gap-4">
-        <div className="bg-white rounded-xl shadow-sm overflow-x-auto">
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-gris-fondo border-b">
               <tr>
-                <th className="text-left px-4 py-3">ID</th>
-                <th className="text-left px-4 py-3">Cliente</th>
-                <th className="text-left px-4 py-3">Teléfono</th>
-                <th className="text-left px-4 py-3">Total</th>
-                <th className="text-left px-4 py-3">Estado</th>
-                <th className="text-left px-4 py-3">Fecha y hora</th>
+                <th className="text-left px-2 sm:px-4 py-3">ID</th>
+                <th className="text-left px-2 sm:px-4 py-3">Cliente</th>
+                <th className="text-left px-4 py-3 hidden lg:table-cell">Teléfono</th>
+                <th className="text-left px-2 sm:px-4 py-3">Total</th>
+                <th className="text-left px-2 sm:px-4 py-3">Estado</th>
+                <th className="text-left px-4 py-3 hidden md:table-cell">Fecha y hora</th>
               </tr>
             </thead>
             <tbody className="divide-y">
               {filtrados.map(p => (
                 <tr key={p.id} onClick={() => setSelected(p)}
                   className={`cursor-pointer hover:bg-gris-fondo/50 ${selected?.id === p.id ? 'bg-rojo-suave' : ''}`}>
-                  <td className="px-4 py-3 font-mono text-xs">#{p.id}</td>
-                  <td className="px-4 py-3 font-medium">{p.nombre}</td>
-                  <td className="px-4 py-3 text-gris-medio whitespace-nowrap">{p.telefono}</td>
-                  <td className="px-4 py-3 font-bold">{formatPrice(p.total)}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-2 sm:px-4 py-3 font-mono text-xs">#{p.id}</td>
+                  <td className="px-2 sm:px-4 py-3 font-medium break-words">{p.nombre}</td>
+                  <td className="px-4 py-3 text-gris-medio whitespace-nowrap hidden lg:table-cell">{p.telefono}</td>
+                  <td className="px-2 sm:px-4 py-3 font-bold whitespace-nowrap">{formatPrice(p.total)}</td>
+                  <td className="px-2 sm:px-4 py-3">
                     <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${ESTADO_COLORS[p.estado] ?? ''}`}>
                       {p.estado}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-gris-medio whitespace-nowrap">{fmtFechaHora(p.creadoEn)}</td>
+                  <td className="px-4 py-3 text-gris-medio whitespace-nowrap hidden md:table-cell">{fmtFechaHora(p.creadoEn)}</td>
                 </tr>
               ))}
             </tbody>
@@ -218,9 +219,19 @@ export default function PedidosAdmin({ pedidos: initial, heading = 'Pedidos' }: 
             <h3 className="font-semibold mb-2">Items</h3>
             <div className="space-y-2 mb-4">
               {selected.itemsDetalle.map((item, i) => (
-                <div key={i} className="flex justify-between text-sm">
-                  <span>{item.nombre} × {item.cantidad}</span>
-                  <span className="font-bold">{formatPrice(item.precio * item.cantidad)}</span>
+                <div key={i} className="flex justify-between gap-2 text-sm">
+                  {item.slug ? (
+                    <a
+                      href={`/productos/${item.slug}`}
+                      target="_blank" rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline"
+                    >
+                      {item.nombre} × {item.cantidad}
+                    </a>
+                  ) : (
+                    <span>{item.nombre} × {item.cantidad}</span>
+                  )}
+                  <span className="font-bold whitespace-nowrap">{formatPrice(item.precio * item.cantidad)}</span>
                 </div>
               ))}
               {selected.costoEnvio ? (
