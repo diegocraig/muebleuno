@@ -2,10 +2,10 @@ import { spawn } from 'child_process'
 import { prisma } from './prisma'
 import { formatPrice } from './utils'
 
-// Envío de correo vía msmtp (Gmail 587, configurado en ~/.msmtprc del server).
-// El From debe ser la cuenta de Gmail autenticada; el Reply-To se apunta al
-// cliente para poder responderle directo.
-const FROM = 'Mueble UNO <diegocraig@gmail.com>'
+// Envío de correo vía msmtp (Gmail/Workspace 587, configurado en ~/.msmtprc del server).
+// El From debe ser la cuenta autenticada en msmtp (ventas@muebleuno.com); el
+// Reply-To se apunta al cliente para poder responderle directo.
+const FROM = 'Mueble UNO <ventas@muebleuno.com>'
 const ADMIN_EMAIL = process.env.ADMIN_NOTIFY_EMAIL || 'administracion@muebleuno.com'
 const TZ = 'America/Argentina/Buenos_Aires'
 
