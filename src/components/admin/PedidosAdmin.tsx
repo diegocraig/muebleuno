@@ -173,7 +173,12 @@ export default function PedidosAdmin({ pedidos: initial, heading = 'Pedidos' }: 
                 <tr key={p.id} onClick={() => setSelected(p)}
                   className={`cursor-pointer hover:bg-gris-fondo/50 ${selected?.id === p.id ? 'bg-rojo-suave' : ''}`}>
                   <td className="px-2 sm:px-4 py-3 font-mono text-xs">#{p.id}</td>
-                  <td className="px-2 sm:px-4 py-3 font-medium break-words">{p.nombre}</td>
+                  <td className="px-2 sm:px-4 py-3 font-medium break-words">
+                    {p.nombre}
+                    {/* En pantallas chicas, las columnas que se ocultan se muestran acá en chiquito */}
+                    <span className="block lg:hidden text-xs font-normal text-gris-medio">{p.telefono}</span>
+                    <span className="block md:hidden text-xs font-normal text-gris-medio">{fmtFechaHora(p.creadoEn)}</span>
+                  </td>
                   <td className="px-4 py-3 text-gris-medio whitespace-nowrap hidden lg:table-cell">{p.telefono}</td>
                   <td className="px-2 sm:px-4 py-3 font-bold whitespace-nowrap">{formatPrice(p.total)}</td>
                   <td className="px-2 sm:px-4 py-3">
