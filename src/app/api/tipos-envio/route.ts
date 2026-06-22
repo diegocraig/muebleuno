@@ -4,6 +4,9 @@ import { getSession } from '@/lib/session'
 
 export async function GET() {
   const tipos = await prisma.tipoEnvio.findMany({ orderBy: { id: 'asc' } })
+  // "Retiro en el local" primero; el resto mantiene el orden por id (sort estable).
+  const esRetiro = (nombre: string) => /retiro/i.test(nombre)
+  tipos.sort((a, b) => Number(esRetiro(b.nombre)) - Number(esRetiro(a.nombre)))
   return NextResponse.json(tipos)
 }
 
