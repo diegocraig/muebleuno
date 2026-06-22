@@ -2,8 +2,27 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getNaveToken, NAVE_PAYMENT_URL } from '@/lib/nave'
 import { enviarReportePedido } from '@/lib/mail'
+import { checkRateLimit } from '@/lib/rateLimiter'
+
+// 10 checkouts cada 10 minutos por IP — frena creación masiva de pedidos y el
+// bombardeo de correos al admin, sin molestar a un comprador que reintenta.
+const MAX_CHECKOUTS = 10
+const WINDOW_CHECKOUT_MS = 10 * 60 * 1000
 
 export async function POST(req: NextRequest) {
+  const ip =
+    req.headers.get('x-forwarded-for')?.split(',')[0].trim() ??
+    req.headers.get('x-real-ip') ??
+    'unknown'
+
+  const limit = checkRateLimit(`checkout:${ip}`, MAX_CHECKOUTS, WINDOW_CHECKOUT_MS)
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: 'Demasiados intentos de pago. Esperá unos minutos.' },
+      { status: 429, headers: { 'Retry-After': String(limit.retryAfter) } },
+    )
+  }
+
   const body = await req.json()
   const { nombre, email, telefono, notas, direccion } = body
   const rawItems: { productoId: number; cantidad: number }[] = body.items ?? []

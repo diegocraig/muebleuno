@@ -72,27 +72,35 @@ export async function POST(req: NextRequest) {
 
     const pedidoId = parseInt(pedidoIdSource)
     if (!isNaN(pedidoId)) {
+      const pedido = await prisma.pedido.findUnique({
+        where: { id: pedidoId },
+        select: { total: true, estado: true, navePagoEstado: true },
+      })
+
       // Segunda barrera: el monto cobrado debe coincidir con el total del pedido.
       // Solo bloquea ante discrepancia positiva; si Nave no expone el monto, sigue.
       const monto = naveAmount(payment)
-      if (monto != null) {
-        const pedido = await prisma.pedido.findUnique({ where: { id: pedidoId }, select: { total: true } })
-        if (pedido && Math.abs(pedido.total - monto) > 0.01) {
-          console.error(
-            `Nave webhook: monto no coincide (pedido ${pedidoId} total=${pedido.total} vs nave=${monto}, payment=${payment_id}) — descartado`,
-          )
-          return NextResponse.json({ ok: false }, { status: 200 })
-        }
+      if (pedido && monto != null && Math.abs(pedido.total - monto) > 0.01) {
+        console.error(
+          `Nave webhook: monto no coincide (pedido ${pedidoId} total=${pedido.total} vs nave=${monto}, payment=${payment_id}) — descartado`,
+        )
+        return NextResponse.json({ ok: false }, { status: 200 })
       }
+
+      const nuevoEstado = estadoMap[naveStatus] ?? 'pendiente'
+      // Anti email-bombing: Nave reintenta el webhook y un atacante podría repetirlo;
+      // solo avisamos al admin si el estado realmente cambió respecto a lo guardado.
+      const cambioEstado = pedido?.navePagoEstado !== naveStatus || pedido?.estado !== nuevoEstado
+
       await prisma.pedido.update({
         where: { id: pedidoId },
         data: {
           navePagoEstado: naveStatus,
-          estado: estadoMap[naveStatus] ?? 'pendiente',
+          estado: nuevoEstado,
         },
       })
-      // Avisar a administración del resultado del pago.
-      void enviarReportePedido(pedidoId, 'pago-actualizado')
+      // Avisar a administración del resultado del pago (solo si hubo cambio).
+      if (cambioEstado) void enviarReportePedido(pedidoId, 'pago-actualizado')
 
       // Si el pago fue aprobado, mandar al comprador el correo de agradecimiento
       // con el detalle. Claim atómico: marca confirmacionEnviada=true sólo si
