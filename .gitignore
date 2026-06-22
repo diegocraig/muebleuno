@@ -16,3 +16,6 @@ ecosystem.config.js.bak*
 # Backups de base de datos
 *.bak
 *.db.bak*
+
+# TS incremental build cache
+*.tsbuildinfo
