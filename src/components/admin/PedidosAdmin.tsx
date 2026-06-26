@@ -6,7 +6,7 @@ import { formatPrice, displayPedidoId } from '@/lib/utils'
 interface PedidoItem { productoId: number; nombre: string; precio: number; cantidad: number; slug?: string }
 interface TipoEnvio { id: number; nombre: string; costo: number }
 interface Pedido {
-  id: number; nombre: string; email: string; telefono: string
+  id: number; nombre: string; email: string; telefono: string; dni?: string | null
   items: string; itemsDetalle: PedidoItem[]; total: number; estado: string
   notas?: string | null; direccion?: string | null; creadoEn: Date
   costoEnvio?: number; tipoEnvioId?: number | null; tipoEnvio?: TipoEnvio | null
@@ -208,6 +208,7 @@ export default function PedidosAdmin({ pedidos: initial, heading = 'Pedidos' }: 
               <p><span className="font-medium">Nombre:</span> {selected.nombre}</p>
               <p><span className="font-medium">Email:</span> <a className="text-blue-600 hover:underline" href={`mailto:${selected.email}`}>{selected.email}</a></p>
               <p><span className="font-medium">Teléfono:</span> {selected.telefono}</p>
+              <p><span className="font-medium">DNI / CUIT:</span> {selected.dni || '—'}</p>
               <p className="whitespace-pre-line"><span className="font-medium">Dirección de envío:</span> {selected.direccion || '—'}</p>
               {selected.notas && <p><span className="font-medium">Notas:</span> {selected.notas}</p>}
               <p>

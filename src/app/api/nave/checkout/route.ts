@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json()
-  const { nombre, email, telefono, notas, direccion } = body
+  const { nombre, email, telefono, dni, notas, direccion } = body
   const rawItems: { productoId: number; cantidad: number }[] = body.items ?? []
 
   // Recalcular precios desde la DB — no confiar en el precio/total del cliente
@@ -71,6 +71,7 @@ export async function POST(req: NextRequest) {
       nombre,
       email,
       telefono,
+      dni: dni || null,
       notas: notas || null,
       direccion: direccion || null,
       items: JSON.stringify(rawItems),

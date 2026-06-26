@@ -73,6 +73,7 @@ export async function POST(req: NextRequest) {
       nombre: body.nombre,
       email: body.email,
       telefono: body.telefono,
+      dni: body.dni || null,
       items: JSON.stringify(body.items),
       total,
       estado: 'pendiente',

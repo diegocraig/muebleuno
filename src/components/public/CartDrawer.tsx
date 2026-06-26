@@ -14,7 +14,7 @@ export default function CartDrawer() {
   } = useCart()
 
   const [step, setStep] = useState<Step>('carrito')
-  const [form, setForm] = useState({ nombre: '', email: '', telefono: '', notas: '', direccion: '' })
+  const [form, setForm] = useState({ nombre: '', email: '', telefono: '', dni: '', notas: '', direccion: '' })
   const [sending, setSending] = useState(false)
   const [sent, setSent] = useState(false)
   const [error, setError] = useState('')
@@ -255,6 +255,14 @@ export default function CartDrawer() {
                       className="w-full border rounded-lg px-3 py-2.5 text-sm" />
                   ))}
                   <div>
+                    <input type="text" inputMode="numeric"
+                      placeholder="DNI / CUIT"
+                      value={form.dni}
+                      onChange={e => setForm(prev => ({ ...prev, dni: e.target.value }))}
+                      className="w-full border rounded-lg px-3 py-2.5 text-sm" />
+                    <p className="text-xs text-gris-medio mt-1">Necesario para poder facturar tu compra.</p>
+                  </div>
+                  <div>
                     <textarea required rows={3}
                       placeholder="Dirección de envío"
                       value={form.direccion}
@@ -300,6 +308,14 @@ export default function CartDrawer() {
                       value={form[f]} onChange={e => setForm(prev => ({ ...prev, [f]: e.target.value }))}
                       className="w-full border rounded-lg px-3 py-2.5 text-sm" />
                   ))}
+                  <div>
+                    <input type="text" inputMode="numeric"
+                      placeholder="DNI / CUIT"
+                      value={form.dni}
+                      onChange={e => setForm(prev => ({ ...prev, dni: e.target.value }))}
+                      className="w-full border rounded-lg px-3 py-2.5 text-sm" />
+                    <p className="text-xs text-gris-medio mt-1">Necesario para poder facturar tu compra.</p>
+                  </div>
                   <textarea placeholder="Notas (opcional)" rows={2}
                     value={form.notas} onChange={e => setForm(prev => ({ ...prev, notas: e.target.value }))}
                     className="w-full border rounded-lg px-3 py-2 text-sm resize-none" />

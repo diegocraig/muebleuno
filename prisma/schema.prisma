@@ -85,6 +85,7 @@ model Pedido {
   nombre               String
   email                String
   telefono             String
+  dni                  String?
   items                String
   total                Float
   estado               String     @default("pendiente")

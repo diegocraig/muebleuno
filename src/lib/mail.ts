@@ -111,6 +111,7 @@ export async function enviarReportePedido(pedidoId: number, evento: TipoEvento):
     ${row('Nombre', escapeHtml(pedido.nombre))}
     ${row('Email', `<a href="mailto:${escapeHtml(pedido.email)}">${escapeHtml(pedido.email)}</a>`)}
     ${row('Teléfono', `${escapeHtml(pedido.telefono)} &nbsp; <a href="https://wa.me/${telLimpio}">WhatsApp</a>`)}
+    ${pedido.dni ? row('DNI / CUIT', escapeHtml(pedido.dni)) : ''}
     ${pedido.direccion ? row('Dirección de envío', escapeHtml(pedido.direccion).replace(/\n/g, '<br>')) : ''}
     ${pedido.notas ? row('Notas', escapeHtml(pedido.notas)) : ''}
     ${row('Tipo de envío', pedido.tipoEnvio ? escapeHtml(pedido.tipoEnvio.nombre) : '—')}
