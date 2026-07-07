@@ -27,6 +27,7 @@ const TITULOS: Record<string, string> = {
   medida: 'Muebles a Medida',
   carpinteros: 'Carpinteros',
   puertas: 'Puertas de Aluminio',
+  chapas: 'Chapas decorativas',
 }
 
 /* ── helpers ── */

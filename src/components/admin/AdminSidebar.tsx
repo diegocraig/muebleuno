@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import NextImage from 'next/image'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, Package, Layers, FolderTree, ShoppingBag, Image, Settings, LogOut, Star, BarChart2, Ruler, Hammer, DoorOpen, Truck } from 'lucide-react'
+import { LayoutDashboard, Package, Layers, FolderTree, ShoppingBag, Image, Settings, LogOut, Star, BarChart2, Ruler, Hammer, DoorOpen, LayoutPanelTop, Truck } from 'lucide-react'
 
 
 const links = [
@@ -12,6 +12,7 @@ const links = [
   { href: '/admin/medida', label: 'A Medida', icon: Ruler },
   { href: '/admin/carpinteros', label: 'Carpinteros', icon: Hammer },
   { href: '/admin/puertas', label: 'Puertas Aluminio', icon: DoorOpen },
+  { href: '/admin/chapas', label: 'Chapas decorativas', icon: LayoutPanelTop },
   { href: '/admin/categorias', label: 'Categorías', icon: Layers },
   { href: '/admin/subcategorias', label: 'Subcategorías', icon: FolderTree },
   { href: '/admin/pedidos', label: 'Pedidos', icon: ShoppingBag },
