@@ -4,6 +4,7 @@ import { X, Trash2, MessageCircle, CreditCard, Truck, ChevronRight, ArrowLeft } 
 import { useCart } from './CartProvider'
 import type { TipoEnvio } from './CartProvider'
 import { formatPrice } from '@/lib/utils'
+import { trackPixel, MONEDA } from '@/lib/pixel'
 
 type Step = 'carrito' | 'envio' | 'nave' | 'contacto'
 
@@ -34,6 +35,19 @@ export default function CartDrawer() {
 
   const handleClose = () => { setIsOpen(false); setStep('carrito') }
 
+  const eventoCarrito = () => ({
+    content_type: 'product',
+    content_ids: items.map(i => String(i.productoId)),
+    num_items: items.reduce((n, i) => n + i.cantidad, 0),
+    value: totalConEnvio,
+    currency: MONEDA,
+  })
+
+  const irAPagar = () => {
+    trackPixel('InitiateCheckout', eventoCarrito())
+    setStep('nave')
+  }
+
   const waMessage = items.map(i => `- ${i.nombre} x${i.cantidad}: ${formatPrice(i.precio * i.cantidad)}`).join('\n')
     + `\n\nSubtotal productos: ${formatPrice(total)}`
     + (tipoEnvio ? `\nEnvío (${tipoEnvio.nombre}): ${tipoEnvio.costo === 0 ? 'Gratis' : formatPrice(tipoEnvio.costo)}` : '')
@@ -62,6 +76,8 @@ export default function CartDrawer() {
   const handlePedido = async (e: React.FormEvent) => {
     e.preventDefault()
     setSending(true)
+    // No es una compra: es el camino "que me contacten". Va como Lead.
+    trackPixel('Lead', eventoCarrito())
     await fetch('/api/pedidos', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -226,7 +242,7 @@ export default function CartDrawer() {
 
                   <div className="space-y-2">
                     <button
-                      onClick={() => setStep('nave')}
+                      onClick={irAPagar}
                       disabled={!tipoEnvio && tiposEnvio.length > 0}
                       className="flex items-center justify-center gap-2 w-full bg-rojo-principal hover:bg-rojo-hover disabled:opacity-50 text-white font-bold py-3.5 rounded-lg transition-colors text-base shadow-sm"
                     >

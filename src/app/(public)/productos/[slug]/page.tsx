@@ -5,7 +5,10 @@ import { ChevronRight } from 'lucide-react'
 import ProductoDetalle from '@/components/public/ProductoDetalle'
 import ProductoGrid from '@/components/public/ProductoGrid'
 import ReviewsBlock from '@/components/public/ReviewsBlock'
+import PixelViewContent from '@/components/public/PixelViewContent'
 import { SITE_URL, SITE_NAME } from '@/lib/seo'
+import { contentId } from '@/lib/meta'
+import { MONEDA } from '@/lib/pixel'
 
 interface PageProps { params: Promise<{ slug: string }> }
 
@@ -25,9 +28,12 @@ export async function generateMetadata({ params }: PageProps) {
     openGraph: {
       title: `${producto.nombre} — ${SITE_NAME}`,
       description: `$${precioFinal.toLocaleString('es-AR')} · ${producto.categoria.nombre}`,
-      type: 'website',
+      url: `${SITE_URL}/productos/${producto.slug}`,
       images: imagenes[0] ? [{ url: `${SITE_URL}${imagenes[0]}`, alt: producto.nombre }] : [],
     },
+    // Las etiquetas og:type=product y product:* se emiten en el JSX de la página,
+    // no acá: el campo `other` de Next las escribiría como <meta name="...">
+    // y el crawler de Meta espera <meta property="...">.
   }
 }
 
@@ -55,6 +61,8 @@ export default async function ProductoPage({ params }: PageProps) {
     name: producto.nombre,
     description: producto.descripcion ?? undefined,
     image: imagenes.map(img => `${SITE_URL}${img}`),
+    sku: contentId(producto.id),
+    mpn: `MU-${producto.id}`,
     brand: { '@type': 'Brand', name: SITE_NAME },
     category: producto.categoria.nombre,
     offers: {
@@ -73,7 +81,24 @@ export default async function ProductoPage({ params }: PageProps) {
     <div className="max-w-7xl mx-auto px-4 py-8">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }}
+      />
+
+      {/* Open Graph de producto — React las eleva al <head>. Complementan al feed:
+          es lo que lee Meta cuando rastrea el link del producto directamente. */}
+      <meta property="og:type" content="product" />
+      <meta property="product:brand" content={SITE_NAME} />
+      <meta property="product:availability" content={producto.stock > 0 ? 'in stock' : 'out of stock'} />
+      <meta property="product:condition" content="new" />
+      <meta property="product:price:amount" content={precioFinal.toFixed(2)} />
+      <meta property="product:price:currency" content={MONEDA} />
+      <meta property="product:retailer_item_id" content={contentId(producto.id)} />
+
+      <PixelViewContent
+        contentId={contentId(producto.id)}
+        nombre={producto.nombre}
+        categoria={producto.categoria.nombre}
+        valor={precioFinal}
       />
 
       {/* Breadcrumb */}

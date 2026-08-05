@@ -5,10 +5,13 @@ import Footer from '@/components/public/Footer'
 import WhatsAppButton from '@/components/public/WhatsAppButton'
 import CartProvider from '@/components/public/CartProvider'
 import ProveedoresBar from '@/components/public/ProveedoresBar'
+import MetaPixel from '@/components/public/MetaPixel'
 
+// El Pixel va acá y no en el layout raíz a propósito: así no trackea el panel /admin.
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
     <CartProvider>
+      <MetaPixel />
       <div className="flex flex-col min-h-screen">
         <Navbar />
         <main className="flex-1">{children}</main>

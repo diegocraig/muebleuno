@@ -3,6 +3,7 @@ import { CheckCircle, Clock, XCircle, RotateCcw, HelpCircle } from 'lucide-react
 import { prisma } from '@/lib/prisma'
 import { displayPedidoId } from '@/lib/utils'
 import AutoRefresh from './AutoRefresh'
+import PixelPurchase from './PixelPurchase'
 
 export const dynamic = 'force-dynamic'
 
@@ -39,10 +40,24 @@ export default async function EstadoPagoPage({ searchParams }: PageProps) {
     ? null
     : await prisma.pedido.findUnique({
         where: { id: pedidoId },
-        select: { id: true, estado: true },
+        select: { id: true, estado: true, total: true, items: true },
       })
 
   const vista = clasificar(pedido?.estado, pedido !== null)
+
+  // Datos para el evento Purchase del Pixel (solo si el pago está confirmado).
+  let compra: { contentIds: string[]; cantidad: number } | null = null
+  if (pedido && vista === 'pagado') {
+    try {
+      const items = JSON.parse(pedido.items || '[]') as { productoId?: number; cantidad?: number }[]
+      compra = {
+        contentIds: items.map(i => String(i.productoId)).filter(id => id !== 'undefined'),
+        cantidad: items.reduce((n, i) => n + (i.cantidad ?? 1), 0),
+      }
+    } catch {
+      compra = { contentIds: [], cantidad: 1 }
+    }
+  }
 
   const config = {
     pagado: {
@@ -76,6 +91,14 @@ export default async function EstadoPagoPage({ searchParams }: PageProps) {
     <div className="min-h-screen flex items-center justify-center bg-gris-fondo px-4">
       <div className="bg-white rounded-2xl shadow-xl p-10 max-w-md w-full text-center">
         {vista === 'pendiente' && <AutoRefresh />}
+        {pedido && compra && (
+          <PixelPurchase
+            pedidoId={pedido.id}
+            total={pedido.total}
+            contentIds={compra.contentIds}
+            cantidad={compra.cantidad}
+          />
+        )}
         {config.icon}
         <h1 className="text-2xl font-black mb-2">{config.titulo}</h1>
         <p className="text-gris-medio mb-6">{config.texto}</p>

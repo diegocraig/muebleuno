@@ -1,5 +1,6 @@
 'use client'
 import { createContext, useContext, useState, useCallback, useEffect } from 'react'
+import { trackPixel, MONEDA } from '@/lib/pixel'
 
 const STORAGE_KEY = 'muebleuno_cart'
 
@@ -60,6 +61,15 @@ export default function CartProvider({ children }: { children: React.ReactNode }
   }, [items])
 
   const addItem = useCallback((item: Omit<CartItem, 'cantidad'>) => {
+    // AddToCart va acá y no en los botones para cubrir de una vez la ficha de
+    // producto, las cards del listado y cualquier otro lugar que agregue al carrito.
+    trackPixel('AddToCart', {
+      content_type: 'product',
+      content_ids: [String(item.productoId)],
+      content_name: item.nombre,
+      value: item.precio,
+      currency: MONEDA,
+    })
     setItems(prev => {
       const exists = prev.find(i => i.productoId === item.productoId)
       if (exists) return prev.map(i => i.productoId === item.productoId ? { ...i, cantidad: i.cantidad + 1 } : i)
