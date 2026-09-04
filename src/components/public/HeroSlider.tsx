@@ -24,6 +24,11 @@ export default function HeroSlider({ items, intervalo = 5 }: Props) {
   const [dragX, setDragX] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
   const touchStartX = useRef<number | null>(null)
+  const touchStartY = useRef<number | null>(null)
+  // Eje del gesto: hasta decidirlo es null. Si resulta vertical, el slider no
+  // se mueve — así scrollear con el dedo sobre el hero no desplaza la página
+  // en horizontal.
+  const gestureAxis = useRef<'x' | 'y' | null>(null)
   const autoPlayRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const goTo = useCallback((idx: number) => {
@@ -51,13 +56,26 @@ export default function HeroSlider({ items, intervalo = 5 }: Props) {
 
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX
+    touchStartY.current = e.touches[0].clientY
+    gestureAxis.current = null
     setIsDragging(true)
     setDragX(0)
   }
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (touchStartX.current === null) return
+    if (touchStartX.current === null || touchStartY.current === null) return
     const diff = e.touches[0].clientX - touchStartX.current
+    const diffY = e.touches[0].clientY - touchStartY.current
+
+    // Decidir el eje una sola vez por gesto, con un umbral de 8px para no
+    // reaccionar al temblor inicial del dedo.
+    if (gestureAxis.current === null) {
+      if (Math.abs(diff) < 8 && Math.abs(diffY) < 8) return
+      gestureAxis.current = Math.abs(diff) > Math.abs(diffY) ? 'x' : 'y'
+      if (gestureAxis.current === 'y') setIsDragging(false)
+    }
+    if (gestureAxis.current === 'y') return
+
     const c = currentRef.current
     // Resistencia en los extremos
     if ((c === 0 && diff > 0) || (c === slides.length - 1 && diff < 0)) {
@@ -70,16 +88,19 @@ export default function HeroSlider({ items, intervalo = 5 }: Props) {
   const handleTouchEnd = (e: React.TouchEvent) => {
     if (touchStartX.current === null) return
     const diff = touchStartX.current - e.changedTouches[0].clientX
+    const horizontal = gestureAxis.current === 'x'
     setIsDragging(false)
     setDragX(0)
-    if (Math.abs(diff) > 50) diff > 0 ? next() : back()
+    if (horizontal && Math.abs(diff) > 50) diff > 0 ? next() : back()
     touchStartX.current = null
+    touchStartY.current = null
+    gestureAxis.current = null
     resetAutoPlay()
   }
 
   return (
     <div
-      className="relative w-full h-[350px] md:h-[580px] overflow-hidden bg-gris-oscuro"
+      className="relative w-full h-[350px] md:h-[580px] overflow-hidden bg-gris-oscuro touch-pan-y"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}

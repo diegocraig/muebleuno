@@ -20,24 +20,30 @@ export default function ProductoCard({ producto }: { producto: Producto }) {
 
   const [imgIdx, setImgIdx] = useState(0)
   const touchStartX = useRef<number | null>(null)
+  const touchStartY = useRef<number | null>(null)
   const didSwipe = useRef(false)
 
   const imagen = imagenes[imgIdx] ?? imagenes[0] ?? null
 
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX
+    touchStartY.current = e.touches[0].clientY
     didSwipe.current = false
   }
 
   const handleTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartX.current === null) return
+    if (touchStartX.current === null || touchStartY.current === null) return
     const diff = touchStartX.current - e.changedTouches[0].clientX
-    if (Math.abs(diff) > 40) {
+    const diffY = touchStartY.current - e.changedTouches[0].clientY
+    // Solo cambiar de foto si el gesto fue claramente horizontal: al scrollear
+    // con el dedo siempre hay algo de deriva lateral y no debe contar.
+    if (Math.abs(diff) > 40 && Math.abs(diff) > Math.abs(diffY)) {
       didSwipe.current = true
       if (diff > 0) setImgIdx(i => Math.min(i + 1, imagenes.length - 1))
       else setImgIdx(i => Math.max(i - 1, 0))
     }
     touchStartX.current = null
+    touchStartY.current = null
   }
 
   const handleLinkClick = (e: React.MouseEvent) => {
@@ -62,7 +68,7 @@ export default function ProductoCard({ producto }: { producto: Producto }) {
       onClick={handleLinkClick}
       className="group bg-white rounded-xl overflow-hidden border hover:shadow-lg transition-all flex flex-col">
       <div
-        className="relative aspect-square bg-gris-fondo overflow-hidden select-none"
+        className="relative aspect-square bg-gris-fondo overflow-hidden select-none touch-pan-y"
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
