@@ -33,7 +33,6 @@ export default async function HomePage() {
           alt="Feliz Día de la Madre — 12 cuotas sin interés en la web y 10% off en stock del local, del 11/10 al 18/10"
           width={1122}
           height={1402}
-          storageKey="promo-dia-madre-2026"
         />
       )}
       <HeroSlider items={sliderItems} intervalo={config?.sliderIntervalo ?? 5} transicion={config?.sliderTransicion ?? 'fade'} />

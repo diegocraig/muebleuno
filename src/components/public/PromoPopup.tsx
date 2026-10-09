@@ -7,35 +7,28 @@ interface Props {
   alt: string
   width: number
   height: number
-  /** Clave de sessionStorage: una vez cerrado no vuelve a aparecer en la sesión. */
-  storageKey: string
 }
 
 const SALIDA_MS = 220
 
-export default function PromoPopup({ src, alt, width, height, storageKey }: Props) {
+export default function PromoPopup({ src, alt, width, height }: Props) {
   const [abierto, setAbierto] = useState(false)
   const [saliendo, setSaliendo] = useState(false)
   const cerrarRef = useRef<HTMLButtonElement>(null)
 
+  // Se muestra en cada carga de la portada.
   useEffect(() => {
-    try {
-      if (sessionStorage.getItem(storageKey)) return
-    } catch {}
     const t = setTimeout(() => setAbierto(true), 700)
     return () => clearTimeout(t)
-  }, [storageKey])
+  }, [])
 
   const cerrar = useCallback(() => {
-    try {
-      sessionStorage.setItem(storageKey, '1')
-    } catch {}
     setSaliendo(true)
     setTimeout(() => {
       setAbierto(false)
       setSaliendo(false)
     }, SALIDA_MS)
-  }, [storageKey])
+  }, [])
 
   useEffect(() => {
     if (!abierto) return
