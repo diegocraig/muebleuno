@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
-import { createBackupSession, destroyBackupSession } from '@/lib/backups'
+import { createBackupSession, destroyBackupSession, getAdminSession } from '@/lib/backups'
 import { checkRateLimit } from '@/lib/rateLimiter'
 
 export const dynamic = 'force-dynamic'
 
 export async function POST(req: NextRequest) {
+  const admin = await getAdminSession()
+  if (!admin) {
+    return NextResponse.json({ error: 'Iniciá sesión como administrador.' }, { status: 401 })
+  }
+
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'local'
   const rl = checkRateLimit(`backups-login:${ip}`, 8, 5 * 60 * 1000)
   if (!rl.ok) {
@@ -31,7 +36,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Clave incorrecta.' }, { status: 401 })
   }
 
-  await createBackupSession()
+  await createBackupSession(admin.id)
   return NextResponse.json({ ok: true })
 }
 

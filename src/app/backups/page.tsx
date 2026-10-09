@@ -1,4 +1,5 @@
-import { hasBackupSession } from '@/lib/backups'
+import { redirect } from 'next/navigation'
+import { getAdminSession, hasBackupSession } from '@/lib/backups'
 import LoginForm from './LoginForm'
 import BackupsClient from './BackupsClient'
 
@@ -6,6 +7,7 @@ export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Backups · muebleuno', robots: { index: false, follow: false } }
 
 export default async function BackupsPage() {
+  if (!(await getAdminSession())) redirect('/admin/login?next=/backups')
   const authed = await hasBackupSession()
   return (
     <main className="min-h-screen bg-neutral-50 text-neutral-900">

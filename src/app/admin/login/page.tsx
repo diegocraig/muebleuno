@@ -23,7 +23,9 @@ export default function LoginPage() {
 
     setLoading(false)
     if (res.ok) {
-      router.push('/admin')
+      // Solo rutas internas (evita open redirect con //otro-sitio.com)
+      const next = new URLSearchParams(window.location.search).get('next')
+      router.push(next && next.startsWith('/') && !next.startsWith('//') ? next : '/admin')
       router.refresh()
     } else {
       setError('Email o contraseña incorrectos')

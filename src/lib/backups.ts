@@ -1,5 +1,6 @@
 import { SignJWT, jwtVerify } from 'jose'
 import { cookies } from 'next/headers'
+import { getSession } from '@/lib/session'
 import { promises as fs } from 'fs'
 import path from 'path'
 
@@ -27,9 +28,17 @@ function getSecret() {
 }
 
 // ---- Sesión dedicada para /backups ----------------------------------------
-export async function createBackupSession() {
+// Doble factor: hace falta una sesión de admin del panel Y la clave de backups.
+// El token de backups queda atado al id del admin que lo abrió.
+export async function getAdminSession() {
+  const session = await getSession()
+  return session && session.rol === 'admin' ? session : null
+}
+
+export async function createBackupSession(adminId: string) {
   const token = await new SignJWT({ scope: 'backups' })
     .setProtectedHeader({ alg: 'HS256' })
+    .setSubject(String(adminId))
     .setExpirationTime('8h')
     .sign(getSecret())
   const store = await cookies()
@@ -47,8 +56,10 @@ export async function hasBackupSession(): Promise<boolean> {
     const store = await cookies()
     const token = store.get(COOKIE)?.value
     if (!token) return false
+    const admin = await getAdminSession()
+    if (!admin) return false
     const { payload } = await jwtVerify(token, getSecret())
-    return payload.scope === 'backups'
+    return payload.scope === 'backups' && payload.sub === String(admin.id)
   } catch {
     return false
   }
