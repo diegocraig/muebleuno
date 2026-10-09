@@ -27,3 +27,25 @@ body {
     text-wrap: balance;
   }
 }
+
+/* ---- Popup de promoción (PromoPopup) ---- */
+@keyframes promo-fondo-in { from { opacity: 0 } to { opacity: 1 } }
+@keyframes promo-fondo-out { from { opacity: 1 } to { opacity: 0 } }
+@keyframes promo-caja-in {
+  0% { opacity: 0; transform: translateY(40px) scale(0.85) rotate(-2deg) }
+  60% { opacity: 1; transform: translateY(-6px) scale(1.02) rotate(0.5deg) }
+  100% { opacity: 1; transform: translateY(0) scale(1) rotate(0) }
+}
+@keyframes promo-caja-out { to { opacity: 0; transform: translateY(20px) scale(0.92) } }
+@keyframes promo-pista-in { from { opacity: 0; transform: translateY(6px) } to { opacity: 1; transform: none } }
+
+.promo-fondo-entrada { animation: promo-fondo-in 0.3s ease-out both }
+.promo-fondo-salida { animation: promo-fondo-out 0.22s ease-in both }
+.promo-caja-entrada { animation: promo-caja-in 0.65s cubic-bezier(0.22, 1, 0.36, 1) 0.05s both }
+.promo-caja-salida { animation: promo-caja-out 0.22s ease-in both }
+.promo-pista { animation: promo-pista-in 0.4s ease-out 0.7s both }
+
+@media (prefers-reduced-motion: reduce) {
+  .promo-fondo-entrada, .promo-fondo-salida, .promo-caja-entrada,
+  .promo-caja-salida, .promo-pista { animation-duration: 0.01ms; animation-delay: 0s }
+}
