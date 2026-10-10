@@ -1,4 +1,5 @@
 import { Truck, Banknote, ShieldCheck, CreditCard } from 'lucide-react'
+import { promo12CuotasActiva } from '@/lib/promos'
 
 export default function BeneficiosBar() {
   return (
@@ -24,7 +25,7 @@ export default function BeneficiosBar() {
         <div className="flex items-center gap-3">
           <CreditCard className="w-8 h-8 opacity-90 shrink-0" />
           <div>
-            <p className="font-bold text-sm">3 o 6 cuotas sin interés</p>
+            <p className="font-bold text-sm">{promo12CuotasActiva() ? '3, 6 o 12 cuotas sin interés' : '3 o 6 cuotas sin interés'}</p>
             <p className="text-xs opacity-80">Visa y Mastercard</p>
           </div>
         </div>
