@@ -3,6 +3,7 @@ import { useState, useRef } from 'react'
 import { MessageCircle, ShoppingCart, ChevronDown, Ruler, Package, ShieldCheck } from 'lucide-react'
 import { formatPrice } from '@/lib/utils'
 import { useCart } from './CartProvider'
+import Cuotas12 from './Cuotas12'
 
 interface Producto {
   id: number; nombre: string; precio: number; precioOferta?: number | null
@@ -220,6 +221,7 @@ export default function ProductoDetalle({ producto }: { producto: Producto }) {
               )}
             </div>
             <p className="text-base font-bold text-rojo-principal mt-1">6 cuotas de {formatPrice(Math.ceil(precioFinal / 6))}</p>
+            <Cuotas12 precio={precioFinal} size="base" />
           </div>
 
           {producto.descripcion && (

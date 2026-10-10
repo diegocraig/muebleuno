@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { ShoppingCart } from 'lucide-react'
 import { formatPrice } from '@/lib/utils'
 import { useCart } from './CartProvider'
+import Cuotas12 from './Cuotas12'
 
 interface Producto {
   id: number; nombre: string; slug: string; precio: number; precioOferta?: number | null
@@ -123,6 +124,7 @@ export default function ProductoCard({ producto }: { producto: Producto }) {
           )}
         </div>
         <p className="text-sm font-bold text-rojo-principal mt-0.5">6 cuotas de {formatPrice(Math.ceil(precioFinal / 6))}</p>
+        <Cuotas12 precio={precioFinal} />
         {!sinStock && producto.stock <= 3 && (
           <p className="text-xs text-orange-500 font-semibold mt-1.5">
             ¡Quedan solo {producto.stock} {producto.stock === 1 ? 'unidad' : 'unidades'}!

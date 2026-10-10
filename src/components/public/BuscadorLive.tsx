@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { formatPrice } from '@/lib/utils'
 import Image from 'next/image'
+import Cuotas12 from './Cuotas12'
 
 interface Producto {
   id: number; nombre: string; slug: string; precio: number; imagenes: string;
@@ -82,6 +83,7 @@ export default function BuscadorLive() {
                   <p className="text-xs text-gris-medio">{p.categoria.nombre}</p>
                   <p className="text-sm font-bold text-gray-400">{formatPrice(p.precio)}</p>
                   <p className="text-sm font-bold text-rojo-principal">6 cuotas de {formatPrice(Math.ceil(p.precio / 6))}</p>
+                  <Cuotas12 precio={p.precio} />
                 </div>
               </Link>
             )
