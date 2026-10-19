@@ -11,6 +11,7 @@ export default async function StockPage() {
       precioOferta: true,
       activo: true,
       categoria: { select: { nombre: true } },
+      colores: { select: { id: true, nombre: true, stock: true }, orderBy: { orden: 'asc' } },
     },
     orderBy: { nombre: 'asc' },
   })

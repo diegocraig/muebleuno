@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/session'
 import { slugify } from '@/lib/utils'
+import { normalizarColores, guardarColores } from '@/lib/coloresServer'
 
 /** Genera un slug único para Producto, añadiendo -2, -3… si ya existe. */
 async function uniqueSlug(base: string, excludeId?: number): Promise<string> {
@@ -52,7 +53,7 @@ export async function GET(req: NextRequest) {
     prisma.producto.count({ where }),
     prisma.producto.findMany({
       where,
-      include: { categoria: true, subcategoria: true },
+      include: { categoria: true, subcategoria: true, colores: { orderBy: { orden: 'asc' } } },
       orderBy: { [orderBy]: order },
       skip: (page - 1) * limit,
       take: limit,
@@ -68,30 +69,39 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json()
+    const norm = normalizarColores(body.colores)
+    if ('error' in norm) return NextResponse.json({ error: norm.error }, { status: 400 })
+
     const baseSlug = body.slug || slugify(body.nombre)
     const slug = await uniqueSlug(baseSlug)
 
-    const producto = await prisma.producto.create({
-      data: {
-        nombre: body.nombre,
-        slug,
-        descripcion: body.descripcion || null,
-        volumen: body.volumen ? parseFloat(body.volumen) : null,
-        datosUtiles: body.datosUtiles || null,
-        infoEmbalaje: body.infoEmbalaje || null,
-        garantia: body.garantia || null,
-        precio: parseFloat(body.precio),
-        precioOferta: body.precioOferta ? parseFloat(body.precioOferta) : null,
-        imagenes: JSON.stringify(body.imagenes ?? []),
-        categoriaId: parseInt(body.categoriaId),
-        subcategoriaId: body.subcategoriaId ? parseInt(body.subcategoriaId) : null,
-        stock: parseInt(body.stock ?? 0),
-        destacado: body.destacado ?? false,
-        novedad: body.novedad ?? false,
-        enPromocion: body.enPromocion ?? false,
-        activo: body.activo ?? true,
-      },
-      include: { categoria: true, subcategoria: true },
+    const producto = await prisma.$transaction(async tx => {
+      const creado = await tx.producto.create({
+        data: {
+          nombre: body.nombre,
+          slug,
+          descripcion: body.descripcion || null,
+          volumen: body.volumen ? parseFloat(body.volumen) : null,
+          datosUtiles: body.datosUtiles || null,
+          infoEmbalaje: body.infoEmbalaje || null,
+          garantia: body.garantia || null,
+          precio: parseFloat(body.precio),
+          precioOferta: body.precioOferta ? parseFloat(body.precioOferta) : null,
+          imagenes: JSON.stringify(body.imagenes ?? []),
+          categoriaId: parseInt(body.categoriaId),
+          subcategoriaId: body.subcategoriaId ? parseInt(body.subcategoriaId) : null,
+          stock: parseInt(body.stock ?? 0),
+          destacado: body.destacado ?? false,
+          novedad: body.novedad ?? false,
+          enPromocion: body.enPromocion ?? false,
+          activo: body.activo ?? true,
+        },
+      })
+      await guardarColores(tx, creado.id, norm.colores)
+      return tx.producto.findUniqueOrThrow({
+        where: { id: creado.id },
+        include: { categoria: true, subcategoria: true, colores: { orderBy: { orden: 'asc' } } },
+      })
     })
 
     return NextResponse.json(producto, { status: 201 })

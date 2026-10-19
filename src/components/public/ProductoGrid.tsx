@@ -1,9 +1,11 @@
 import ProductoCard from './ProductoCard'
+import type { ColorProducto } from '@/lib/colores'
 
 interface Producto {
   id: number; nombre: string; slug: string; precio: number; precioOferta?: number | null
   imagenes: string; novedad: boolean; enPromocion: boolean; destacado: boolean; stock: number
   categoria: { nombre: string; slug: string }
+  colores?: ColorProducto[]
 }
 
 export default function ProductoGrid({ productos }: { productos: Producto[] }) {

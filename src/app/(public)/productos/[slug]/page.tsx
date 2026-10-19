@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { INCLUDE_COLORES } from '@/lib/coloresServer'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronRight } from 'lucide-react'
@@ -9,15 +10,16 @@ import PixelViewContent from '@/components/public/PixelViewContent'
 import { SITE_URL, SITE_NAME } from '@/lib/seo'
 import { contentId } from '@/lib/meta'
 import { MONEDA } from '@/lib/pixel'
+import { imagenesProducto } from '@/lib/colores'
 
 interface PageProps { params: Promise<{ slug: string }> }
 
 export async function generateMetadata({ params }: PageProps) {
   const { slug } = await params
-  const producto = await prisma.producto.findUnique({ where: { slug }, include: { categoria: true } })
+  const producto = await prisma.producto.findUnique({ where: { slug }, include: { categoria: true, ...INCLUDE_COLORES } })
   if (!producto) return {}
 
-  const imagenes = JSON.parse(producto.imagenes || '[]') as string[]
+  const imagenes = imagenesProducto(producto)
   const precioFinal = producto.precioOferta ?? producto.precio
   const description = producto.descripcion
     ?? `Comprá ${producto.nombre} en ${SITE_NAME}. ${producto.categoria.nombre} · Envíos a todo el país.`
@@ -41,17 +43,17 @@ export default async function ProductoPage({ params }: PageProps) {
   const { slug } = await params
   const producto = await prisma.producto.findUnique({
     where: { slug, activo: true },
-    include: { categoria: true },
+    include: { categoria: true, ...INCLUDE_COLORES },
   })
   if (!producto) notFound()
 
   const relacionados = await prisma.producto.findMany({
     where: { activo: true, categoriaId: producto.categoriaId, NOT: { id: producto.id } },
-    include: { categoria: true },
+    include: { categoria: true, ...INCLUDE_COLORES },
     take: 4,
   })
 
-  const imagenes = JSON.parse(producto.imagenes || '[]') as string[]
+  const imagenes = imagenesProducto(producto)
   const precioFinal = producto.precioOferta ?? producto.precio
   const availability = producto.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock'
 

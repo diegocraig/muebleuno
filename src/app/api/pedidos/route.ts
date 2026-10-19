@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/session'
 import { checkRateLimit } from '@/lib/rateLimiter'
 import { enviarReportePedido } from '@/lib/mail'
+import { resolverLineas } from '@/lib/coloresServer'
 
 export async function GET(req: NextRequest) {
   const session = await getSession()
@@ -37,22 +38,11 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json()
-  const rawItems: { productoId: number; cantidad: number }[] = body.items ?? []
 
-  // Recalcular total desde la DB — no confiar en el precio del cliente
-  const productIds = rawItems.map(i => i.productoId)
-  const productos = await prisma.producto.findMany({
-    where: { id: { in: productIds }, activo: true },
-    select: { id: true, precio: true, precioOferta: true },
-  })
-  const precioMap = new Map(productos.map(p => [p.id, p.precioOferta ?? p.precio]))
-
-  let totalProductos = 0
-  for (const item of rawItems) {
-    const precio = precioMap.get(item.productoId)
-    if (precio == null) continue
-    totalProductos += precio * item.cantidad
-  }
+  // Recalcular total desde la DB y validar colores — no confiar en el cliente
+  const res = await resolverLineas(body.items)
+  if ('error' in res) return NextResponse.json({ error: res.error }, { status: 400 })
+  const totalProductos = res.lineas.reduce((acc, l) => acc + l.precio * l.cantidad, 0)
 
   let costoEnvio = 0
   let tipoEnvioId: number | null = null
@@ -74,7 +64,7 @@ export async function POST(req: NextRequest) {
       email: body.email,
       telefono: body.telefono,
       dni: body.dni || null,
-      items: JSON.stringify(body.items),
+      items: JSON.stringify(res.lineas),
       total,
       estado: 'pendiente',
       notas: body.notas,

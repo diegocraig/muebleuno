@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { SITE_URL, SITE_NAME } from '@/lib/seo'
 import { MONEDA } from '@/lib/pixel'
+import { imagenesProducto, type ColorProducto } from '@/lib/colores'
 
 // ID de producto compartido entre el feed de catálogo y los eventos del Pixel.
 // Meta cruza los dos por este valor, así que TIENE que ser el mismo en ambos lados.
@@ -46,16 +47,12 @@ type ProductoFeed = {
   stock: number
   categoria: { nombre: string }
   subcategoria: { nombre: string } | null
+  colores?: ColorProducto[]
 }
 
 export function toFeedItem(p: ProductoFeed): FeedItem | null {
-  let imagenes: string[] = []
-  try {
-    const parsed = JSON.parse(p.imagenes || '[]')
-    if (Array.isArray(parsed)) imagenes = parsed.filter(i => typeof i === 'string' && i.length > 0)
-  } catch {
-    imagenes = []
-  }
+  // Sin fotos generales, el producto se muestra con las de su primer color.
+  const imagenes = imagenesProducto(p)
 
   // Meta descarta el item si no tiene imagen o si el precio es 0 — mejor no mandarlo
   // que ensuciar el catálogo con errores.
@@ -100,6 +97,7 @@ export async function getFeedItems(): Promise<FeedItem[]> {
       stock: true,
       categoria: { select: { nombre: true } },
       subcategoria: { select: { nombre: true } },
+      colores: { select: { id: true, nombre: true, imagenes: true, stock: true }, orderBy: { orden: 'asc' } },
     },
     orderBy: { id: 'asc' },
   })

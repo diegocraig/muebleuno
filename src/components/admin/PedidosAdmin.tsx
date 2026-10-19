@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { MessageCircle, Star } from 'lucide-react'
 import { formatPrice, displayPedidoId } from '@/lib/utils'
 
-interface PedidoItem { productoId: number; nombre: string; precio: number; cantidad: number; slug?: string }
+interface PedidoItem { productoId: number; nombre: string; precio: number; cantidad: number; slug?: string; colorNombre?: string; imagen?: string }
 interface TipoEnvio { id: number; nombre: string; costo: number }
 interface Pedido {
   id: number; nombre: string; email: string; telefono: string; dni?: string | null
@@ -95,7 +95,7 @@ function ModalReview({ pedido, onClose }: { pedido: Pedido; onClose: () => void 
               <select value={form.productoId} onChange={e => setForm(f => ({ ...f, productoId: e.target.value }))}
                 className="w-full border rounded-lg px-3 py-2 text-sm">
                 <option value="">— Reseña general del negocio —</option>
-                {items.map(item => (
+                {items.filter((item, i) => items.findIndex(x => x.productoId === item.productoId) === i).map(item => (
                   <option key={item.productoId} value={item.productoId}>{item.nombre}</option>
                 ))}
               </select>
@@ -227,17 +227,27 @@ export default function PedidosAdmin({ pedidos: initial, heading = 'Pedidos' }: 
             <div className="space-y-2 mb-4">
               {selected.itemsDetalle.map((item, i) => (
                 <div key={i} className="flex justify-between gap-2 text-sm">
-                  {item.slug ? (
-                    <a
-                      href={`/productos/${item.slug}`}
-                      target="_blank" rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline"
-                    >
-                      {item.nombre} × {item.cantidad}
-                    </a>
-                  ) : (
-                    <span>{item.nombre} × {item.cantidad}</span>
-                  )}
+                  <div className="flex items-start gap-2 min-w-0">
+                    {item.colorNombre && item.imagen && (
+                      <img src={item.imagen} alt="" className="w-10 h-10 rounded object-cover shrink-0" />
+                    )}
+                    <div className="min-w-0">
+                      {item.slug ? (
+                        <a
+                          href={`/productos/${item.slug}`}
+                          target="_blank" rel="noopener noreferrer"
+                          className="text-blue-600 hover:underline"
+                        >
+                          {item.nombre} × {item.cantidad}
+                        </a>
+                      ) : (
+                        <span>{item.nombre} × {item.cantidad}</span>
+                      )}
+                      {item.colorNombre && (
+                        <p className="text-xs"><span className="text-gris-medio">Color:</span> <span className="font-semibold">{item.colorNombre}</span></p>
+                      )}
+                    </div>
+                  </div>
                   <span className="font-bold whitespace-nowrap">{formatPrice(item.precio * item.cantidad)}</span>
                 </div>
               ))}

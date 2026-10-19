@@ -6,6 +6,8 @@ interface Props {
   images: string[]
   onChange: (images: string[]) => void
   context?: 'producto' | 'categoria' | 'slider'
+  /** Sin título ni bloque de recomendaciones (para usarlo dentro de otra tarjeta). */
+  compact?: boolean
 }
 
 const SPECS = {
@@ -36,7 +38,7 @@ const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'im
 const MAX_MB = 20
 const MAX_BYTES = MAX_MB * 1024 * 1024
 
-export default function ImageUploader({ images, onChange, context = 'producto' }: Props) {
+export default function ImageUploader({ images, onChange, context = 'producto', compact = false }: Props) {
   const [uploading, setUploading] = useState(false)
   const [progress, setProgress] = useState({ done: 0, total: 0 })
   const [errors, setErrors] = useState<string[]>([])
@@ -112,7 +114,7 @@ export default function ImageUploader({ images, onChange, context = 'producto' }
 
   return (
     <div>
-      <label className="block text-sm font-medium mb-2">{spec.label}</label>
+      {!compact && <label className="block text-sm font-medium mb-2">{spec.label}</label>}
 
       {/* Thumbnails */}
       {images.length > 0 && (
@@ -164,7 +166,7 @@ export default function ImageUploader({ images, onChange, context = 'producto' }
         onDrop={handleDrop}
         onDragOver={e => e.preventDefault()}
         onClick={() => !uploading && inputRef.current?.click()}
-        className="border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-2 py-6 px-4 cursor-pointer hover:border-rojo-principal hover:bg-rojo-suave/30 transition-colors"
+        className={`border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-2 ${compact ? 'py-3' : 'py-6'} px-4 cursor-pointer hover:border-rojo-principal hover:bg-rojo-suave/30 transition-colors`}
       >
         {uploading ? (
           <>
@@ -206,7 +208,7 @@ export default function ImageUploader({ images, onChange, context = 'producto' }
       )}
 
       {/* Specs */}
-      <div className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2.5 space-y-1 mt-3">
+      {!compact && <div className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2.5 space-y-1 mt-3">
         <div className="flex items-center gap-1.5 text-blue-700 font-medium text-xs mb-1">
           <Info className="w-3.5 h-3.5 shrink-0" />
           Recomendaciones
@@ -218,7 +220,7 @@ export default function ImageUploader({ images, onChange, context = 'producto' }
           <li>🗂️ Formatos: <strong>JPG, PNG o WEBP</strong></li>
           <li>💡 {spec.extra}</li>
         </ul>
-      </div>
+      </div>}
     </div>
   )
 }

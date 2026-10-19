@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { INCLUDE_COLORES } from '@/lib/coloresServer'
 import { notFound } from 'next/navigation'
 import CategoriaFiltro from '@/components/public/CategoriaFiltro'
 
@@ -16,7 +17,7 @@ export default async function CategoriaPage({ params }: PageProps) {
       },
       productos: {
         where: { activo: true },
-        include: { categoria: true },
+        include: { categoria: true, ...INCLUDE_COLORES },
         orderBy: { creadoEn: 'desc' },
       },
     },

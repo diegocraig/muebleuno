@@ -6,9 +6,10 @@ import { useRouter } from 'next/navigation'
 import { formatPrice } from '@/lib/utils'
 import Image from 'next/image'
 import Cuotas12 from './Cuotas12'
+import { imagenesProducto, type ColorProducto } from '@/lib/colores'
 
 interface Producto {
-  id: number; nombre: string; slug: string; precio: number; imagenes: string;
+  id: number; nombre: string; slug: string; precio: number; imagenes: string; colores?: ColorProducto[];
   categoria: { nombre: string }
 }
 
@@ -70,7 +71,7 @@ export default function BuscadorLive() {
             <p className="p-4 text-sm text-gris-medio">No se encontraron resultados</p>
           )}
           {!loading && results.map(p => {
-            const imgs = JSON.parse(p.imagenes || '[]')
+            const imgs = imagenesProducto(p)
             return (
               <Link key={p.id} href={`/productos/${p.slug}`}
                 onClick={() => { setOpen(false); setQuery('') }}

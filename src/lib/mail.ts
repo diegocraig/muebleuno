@@ -42,7 +42,10 @@ export function enviarMail(opts: { to?: string; subject: string; html: string; r
   })
 }
 
-interface ItemRaw { productoId: number; cantidad: number; nombre?: string; precio?: number }
+interface ItemRaw { productoId: number; cantidad: number; nombre?: string; precio?: number; colorNombre?: string }
+
+const colorHtml = (c?: string) =>
+  c ? `<br><span style="color:#888;font-size:12px">Color: ${escapeHtml(c)}</span>` : ''
 
 type TipoEvento = 'nuevo-tarjeta' | 'nuevo-contacto' | 'pago-actualizado'
 
@@ -81,7 +84,7 @@ export async function enviarReportePedido(pedidoId: number, evento: TipoEvento):
       const prod = pmap.get(i.productoId)
       const nombre = i.nombre ?? prod?.nombre ?? `Producto #${i.productoId}`
       const precio = i.precio ?? prod?.precioOferta ?? prod?.precio ?? 0
-      return { nombre, cantidad: i.cantidad, precio, subtotal: precio * i.cantidad }
+      return { nombre, colorNombre: i.colorNombre, cantidad: i.cantidad, precio, subtotal: precio * i.cantidad }
     })
     const subtotalProductos = lineas.reduce((a, l) => a + l.subtotal, 0)
 
@@ -95,7 +98,7 @@ export async function enviarReportePedido(pedidoId: number, evento: TipoEvento):
 
     const itemsHtml = lineas.map(l => `
       <tr>
-        <td style="padding:6px 0;border-bottom:1px solid #eee">${escapeHtml(l.nombre)}</td>
+        <td style="padding:6px 0;border-bottom:1px solid #eee">${escapeHtml(l.nombre)}${colorHtml(l.colorNombre)}</td>
         <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:center">×${l.cantidad}</td>
         <td style="padding:6px 0;border-bottom:1px solid #eee;text-align:right;white-space:nowrap">${formatPrice(l.subtotal)}</td>
       </tr>`).join('')
@@ -168,7 +171,7 @@ export async function enviarConfirmacionCompra(pedidoId: number): Promise<void> 
       const prod = pmap.get(i.productoId)
       const nombre = i.nombre ?? prod?.nombre ?? `Producto #${i.productoId}`
       const precio = i.precio ?? prod?.precioOferta ?? prod?.precio ?? 0
-      return { nombre, cantidad: i.cantidad, subtotal: precio * i.cantidad }
+      return { nombre, colorNombre: i.colorNombre, cantidad: i.cantidad, subtotal: precio * i.cantidad }
     })
     const subtotalProductos = lineas.reduce((a, l) => a + l.subtotal, 0)
     const primerNombre = capitalizar(pedido.nombre.split(/\s+/)[0] || pedido.nombre)
@@ -176,7 +179,7 @@ export async function enviarConfirmacionCompra(pedidoId: number): Promise<void> 
 
     const itemsHtml = lineas.map(l => `
         <tr>
-          <td style="padding:8px 0;border-bottom:1px solid #f0f0f0">${escapeHtml(l.nombre)}</td>
+          <td style="padding:8px 0;border-bottom:1px solid #f0f0f0">${escapeHtml(l.nombre)}${colorHtml(l.colorNombre)}</td>
           <td style="padding:8px 8px;border-bottom:1px solid #f0f0f0;text-align:center">${l.cantidad}</td>
           <td style="padding:8px 0;border-bottom:1px solid #f0f0f0;text-align:right;white-space:nowrap">${formatPrice(l.subtotal)}</td>
         </tr>`).join('')

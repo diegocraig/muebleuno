@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { INCLUDE_COLORES } from '@/lib/coloresServer'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import ProductosOrdenables from '@/components/public/ProductosOrdenables'
@@ -13,7 +14,7 @@ export default async function SubcategoriaPage({ params }: PageProps) {
       categoria: true,
       productos: {
         where: { activo: true },
-        include: { categoria: true },
+        include: { categoria: true, ...INCLUDE_COLORES },
         orderBy: { creadoEn: 'desc' },
       },
     },

@@ -1,5 +1,5 @@
 'use client'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, Fragment } from 'react'
 import { ChevronUp, ChevronDown, ChevronsUpDown, Save } from 'lucide-react'
 
 interface Producto {
@@ -10,12 +10,14 @@ interface Producto {
   precioOferta: number | null
   activo: boolean
   categoria: { nombre: string }
+  colores: { id: number; nombre: string; stock: number }[]
 }
 
 type SortKey = 'nombre' | 'categoria' | 'stock' | 'precio'
 type SortDir = 'asc' | 'desc'
 
-interface EditCell { id: number; field: 'stock' | 'precio' | 'precioOferta'; value: string }
+// colorStock: `id` es el id del color, no del producto.
+interface EditCell { id: number; field: 'stock' | 'precio' | 'precioOferta' | 'colorStock'; value: string }
 
 function SortIcon({ col, sortKey, sortDir }: { col: SortKey; sortKey: SortKey; sortDir: SortDir }) {
   if (col !== sortKey) return <ChevronsUpDown className="w-3 h-3 opacity-40" />
@@ -30,7 +32,7 @@ export default function StockAdmin({ productos: initial }: { productos: Producto
   const [sortKey, setSortKey] = useState<SortKey>('nombre')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
   const [editing, setEditing] = useState<EditCell | null>(null)
-  const [saving, setSaving] = useState<number | null>(null)
+  const [saving, setSaving] = useState(false)
 
   const categorias = useMemo(() => {
     const set = new Set(initial.map(p => p.categoria.nombre))
@@ -68,8 +70,10 @@ export default function StockAdmin({ productos: initial }: { productos: Producto
 
   const saveEdit = async () => {
     if (!editing) return
-    setSaving(editing.id)
-    const payload: Record<string, unknown> = { id: editing.id, [editing.field]: editing.value }
+    setSaving(true)
+    const payload: Record<string, unknown> = editing.field === 'colorStock'
+      ? { colorId: editing.id, stock: editing.value }
+      : { id: editing.id, [editing.field]: editing.value }
     const res = await fetch('/api/stock', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -77,15 +81,15 @@ export default function StockAdmin({ productos: initial }: { productos: Producto
     })
     if (res.ok) {
       const updated = await res.json()
-      setProductos(prev => prev.map(p => p.id === updated.id ? { ...p, stock: updated.stock, precio: updated.precio, precioOferta: updated.precioOferta } : p))
+      setProductos(prev => prev.map(p => p.id === updated.id ? { ...p, stock: updated.stock, precio: updated.precio, precioOferta: updated.precioOferta, colores: updated.colores } : p))
     }
-    setSaving(null)
+    setSaving(false)
     setEditing(null)
   }
 
-  const Cell = ({ prod, field }: { prod: Producto; field: EditCell['field'] }) => {
-    const isEditing = editing?.id === prod.id && editing?.field === field
-    const rawValue = field === 'precioOferta' ? prod.precioOferta : prod[field as 'stock' | 'precio']
+  const Cell = ({ id, field, rawValue }: { id: number; field: EditCell['field']; rawValue: number | null }) => {
+    const isEditing = editing?.id === id && editing?.field === field
+    const esStock = field === 'stock' || field === 'colorStock'
 
     if (isEditing) {
       return (
@@ -98,7 +102,7 @@ export default function StockAdmin({ productos: initial }: { productos: Producto
             onKeyDown={e => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') cancelEdit() }}
             className="w-24 border border-rojo-principal rounded px-2 py-0.5 text-sm focus:outline-none"
           />
-          <button onClick={saveEdit} disabled={saving === prod.id}
+          <button onClick={saveEdit} disabled={saving}
             className="text-green-600 hover:text-green-700 disabled:opacity-50">
             <Save className="w-4 h-4" />
           </button>
@@ -109,12 +113,12 @@ export default function StockAdmin({ productos: initial }: { productos: Producto
 
     return (
       <button
-        onClick={() => startEdit(prod.id, field, rawValue as number | null)}
+        onClick={() => startEdit(id, field, rawValue)}
         className="text-left hover:bg-rojo-suave rounded px-2 py-0.5 transition-colors cursor-pointer group w-full"
         title="Click para editar"
       >
-        <span className={field === 'stock' && (rawValue as number) === 0 ? 'text-red-600 font-semibold' : field === 'stock' && (rawValue as number) <= 5 ? 'text-yellow-600 font-semibold' : ''}>
-          {field === 'stock'
+        <span className={esStock && (rawValue as number) === 0 ? 'text-red-600 font-semibold' : esStock && (rawValue as number) <= 5 ? 'text-yellow-600 font-semibold' : ''}>
+          {esStock
             ? rawValue as number
             : rawValue === null || rawValue === undefined
               ? <span className="text-gris-claro italic text-xs">—</span>
@@ -175,16 +179,33 @@ export default function StockAdmin({ productos: initial }: { productos: Producto
             </thead>
             <tbody className="divide-y">
               {filtrados.map(p => (
-                <tr key={p.id} className={`hover:bg-gris-fondo/40 ${!p.activo ? 'opacity-50' : ''}`}>
-                  <td className="px-3 py-2.5 font-medium max-w-[220px] truncate" title={p.nombre}>
-                    {p.nombre}
-                    {!p.activo && <span className="ml-2 text-xs text-gris-medio">(inactivo)</span>}
-                  </td>
-                  <td className="px-3 py-2.5 text-gris-medio">{p.categoria.nombre}</td>
-                  <td className="px-3 py-2.5 w-28"><Cell prod={p} field="stock" /></td>
-                  <td className="px-3 py-2.5 w-36"><Cell prod={p} field="precio" /></td>
-                  <td className="px-3 py-2.5 w-36"><Cell prod={p} field="precioOferta" /></td>
-                </tr>
+                <Fragment key={p.id}>
+                  <tr className={`hover:bg-gris-fondo/40 ${!p.activo ? 'opacity-50' : ''}`}>
+                    <td className="px-3 py-2.5 font-medium max-w-[220px] truncate" title={p.nombre}>
+                      {p.nombre}
+                      {!p.activo && <span className="ml-2 text-xs text-gris-medio">(inactivo)</span>}
+                    </td>
+                    <td className="px-3 py-2.5 text-gris-medio">{p.categoria.nombre}</td>
+                    <td className="px-3 py-2.5 w-28">
+                      {p.colores.length ? (
+                        <span className="px-2 py-0.5 font-semibold" title="Suma de los colores">
+                          {p.stock} <span className="text-xs font-normal text-gris-claro">total</span>
+                        </span>
+                      ) : (
+                        <Cell id={p.id} field="stock" rawValue={p.stock} />
+                      )}
+                    </td>
+                    <td className="px-3 py-2.5 w-36"><Cell id={p.id} field="precio" rawValue={p.precio} /></td>
+                    <td className="px-3 py-2.5 w-36"><Cell id={p.id} field="precioOferta" rawValue={p.precioOferta} /></td>
+                  </tr>
+                  {p.colores.map(c => (
+                    <tr key={`c${c.id}`} className={`bg-gris-fondo/30 ${!p.activo ? 'opacity-50' : ''}`}>
+                      <td className="pl-8 pr-3 py-1.5 text-gris-medio text-xs" colSpan={2}>↳ Color: <span className="font-medium text-gris-oscuro">{c.nombre}</span></td>
+                      <td className="px-3 py-1.5 w-28"><Cell id={c.id} field="colorStock" rawValue={c.stock} /></td>
+                      <td colSpan={2} />
+                    </tr>
+                  ))}
+                </Fragment>
               ))}
             </tbody>
           </table>

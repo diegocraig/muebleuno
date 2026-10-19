@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { INCLUDE_COLORES } from '@/lib/coloresServer'
 import HeroSlider from '@/components/public/HeroSlider'
 import BeneficiosBar from '@/components/public/BeneficiosBar'
 import CategoriaGrid from '@/components/public/CategoriaGrid'
@@ -15,8 +16,8 @@ async function getData() {
   const [sliderItems, categorias, destacados, novedades, config] = await Promise.all([
     prisma.sliderItem.findMany({ where: { activo: true }, orderBy: { orden: 'asc' } }),
     prisma.categoria.findMany({ where: { activa: true }, orderBy: { orden: 'asc' }, include: { _count: { select: { productos: true } } } }),
-    prisma.producto.findMany({ where: { activo: true, destacado: true }, include: { categoria: true }, take: 8, orderBy: { creadoEn: 'desc' } }),
-    prisma.producto.findMany({ where: { activo: true, novedad: true }, include: { categoria: true }, take: 8, orderBy: { creadoEn: 'desc' } }),
+    prisma.producto.findMany({ where: { activo: true, destacado: true }, include: { categoria: true, ...INCLUDE_COLORES }, take: 8, orderBy: { creadoEn: 'desc' } }),
+    prisma.producto.findMany({ where: { activo: true, novedad: true }, include: { categoria: true, ...INCLUDE_COLORES }, take: 8, orderBy: { creadoEn: 'desc' } }),
     prisma.configuracion.findUnique({ where: { id: 1 } }),
   ])
   return { sliderItems, categorias, destacados, novedades, config }

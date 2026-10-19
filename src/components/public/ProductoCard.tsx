@@ -5,16 +5,19 @@ import { ShoppingCart } from 'lucide-react'
 import { formatPrice } from '@/lib/utils'
 import { useCart } from './CartProvider'
 import Cuotas12 from './Cuotas12'
+import { imagenesProducto, imagenColor, type ColorProducto } from '@/lib/colores'
 
 interface Producto {
   id: number; nombre: string; slug: string; precio: number; precioOferta?: number | null
   imagenes: string; novedad: boolean; enPromocion: boolean; destacado: boolean; stock: number
   categoria: { nombre: string; slug: string }
+  colores?: ColorProducto[]
 }
 
 export default function ProductoCard({ producto }: { producto: Producto }) {
   const { addItem } = useCart()
-  const imagenes = JSON.parse(producto.imagenes || '[]') as string[]
+  const imagenes = imagenesProducto(producto)
+  const colores = producto.colores ?? []
   const precioFinal = producto.precioOferta ?? producto.precio
   const tieneOferta = !!producto.precioOferta && producto.precioOferta < producto.precio
   const sinStock = producto.stock === 0
@@ -55,6 +58,8 @@ export default function ProductoCard({ producto }: { producto: Producto }) {
   }
 
   const handleAdd = (e: React.MouseEvent) => {
+    // Con colores no se agrega directo: el click sigue el Link a la ficha para elegir el color.
+    if (colores.length) return
     e.preventDefault()
     addItem({
       productoId: producto.id,
@@ -108,7 +113,7 @@ export default function ProductoCard({ producto }: { producto: Producto }) {
           <button
             onClick={handleAdd}
             className="absolute bottom-2 right-2 bg-rojo-principal text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-all hover:bg-rojo-hover shadow-md"
-            title="Agregar al carrito"
+            title={colores.length ? 'Elegir color' : 'Agregar al carrito'}
           >
             <ShoppingCart className="w-4 h-4" />
           </button>
@@ -117,6 +122,21 @@ export default function ProductoCard({ producto }: { producto: Producto }) {
       <div className="p-4 flex-1 flex flex-col">
         <p className="text-xs text-gris-medio mb-1">{producto.categoria.nombre}</p>
         <h3 className="font-semibold text-sm leading-tight mb-2 flex-1 line-clamp-2">{producto.nombre}</h3>
+        {colores.length > 0 && (
+          <div className="flex items-center gap-1 mb-2" title={colores.map(c => c.nombre).join(', ')}>
+            {colores.slice(0, 5).map(c => {
+              const img = imagenColor(c)
+              return (
+                <span key={c.id}
+                  className={`block w-4 h-4 rounded-full border border-gray-300 bg-gris-fondo bg-cover bg-center ${c.stock <= 0 ? 'opacity-40' : ''}`}
+                  style={c.hex ? { backgroundColor: c.hex } : img ? { backgroundImage: `url(${img})` } : undefined} />
+              )
+            })}
+            <span className="text-xs text-gris-medio ml-1">
+              {colores.length > 5 ? `+${colores.length - 5}` : `${colores.length} ${colores.length === 1 ? 'color' : 'colores'}`}
+            </span>
+          </div>
+        )}
         <div className="flex items-baseline gap-2">
           <span className="font-black text-lg text-gray-400">{formatPrice(precioFinal)}</span>
           {tieneOferta && (

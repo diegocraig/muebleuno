@@ -4,7 +4,7 @@ import ProductosAdmin from '@/components/admin/ProductosAdmin'
 export default async function AdminProductosPage() {
   const [productos, categorias, subcategorias] = await Promise.all([
     prisma.producto.findMany({
-      include: { categoria: true, subcategoria: true },
+      include: { categoria: true, subcategoria: true, colores: { orderBy: { orden: 'asc' } } },
       orderBy: { creadoEn: 'desc' },
     }),
     prisma.categoria.findMany({ orderBy: { orden: 'asc' } }),

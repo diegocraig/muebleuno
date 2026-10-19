@@ -1,10 +1,11 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { X, Trash2, MessageCircle, CreditCard, Truck, ChevronRight, ArrowLeft } from 'lucide-react'
-import { useCart } from './CartProvider'
+import { useCart, itemKey } from './CartProvider'
 import type { TipoEnvio } from './CartProvider'
 import { formatPrice } from '@/lib/utils'
 import { trackPixel, MONEDA } from '@/lib/pixel'
+import { nombreConColor } from '@/lib/colores'
 
 type Step = 'carrito' | 'envio' | 'nave' | 'contacto'
 
@@ -45,10 +46,11 @@ export default function CartDrawer() {
 
   const irAPagar = () => {
     trackPixel('InitiateCheckout', eventoCarrito())
+    setError('')
     setStep('nave')
   }
 
-  const waMessage = items.map(i => `- ${i.nombre} x${i.cantidad}: ${formatPrice(i.precio * i.cantidad)}`).join('\n')
+  const waMessage = items.map(i => `- ${nombreConColor(i)} x${i.cantidad}: ${formatPrice(i.precio * i.cantidad)}`).join('\n')
     + `\n\nSubtotal productos: ${formatPrice(total)}`
     + (tipoEnvio ? `\nEnvío (${tipoEnvio.nombre}): ${tipoEnvio.costo === 0 ? 'Gratis' : formatPrice(tipoEnvio.costo)}` : '')
     + `\n\nTotal: ${formatPrice(totalConEnvio)}`
@@ -78,12 +80,18 @@ export default function CartDrawer() {
     setSending(true)
     // No es una compra: es el camino "que me contacten". Va como Lead.
     trackPixel('Lead', eventoCarrito())
-    await fetch('/api/pedidos', {
+    setError('')
+    const res = await fetch('/api/pedidos', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...form, items, total: totalConEnvio, tipoEnvioId: tipoEnvio?.id ?? null, costoEnvio }),
-    })
+    }).catch(() => null)
     setSending(false)
+    if (!res?.ok) {
+      const data = await res?.json().catch(() => ({}))
+      setError(data?.error ?? 'No pudimos enviar el pedido. Probá de nuevo.')
+      return
+    }
     setSent(true)
     clear()
     setTimeout(() => { setSent(false); setStep('carrito'); setIsOpen(false) }, 3000)
@@ -143,22 +151,24 @@ export default function CartDrawer() {
               <>
                 <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-4">
                   {items.map(item => (
-                    <div key={item.productoId} className="flex gap-3 items-center">
+                    <div key={itemKey(item)} className="flex gap-3 items-center">
                       <div className="w-16 h-16 rounded-lg overflow-hidden bg-gris-fondo shrink-0">
                         {item.imagen && <img src={item.imagen} alt={item.nombre} className="w-full h-full object-cover" />}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm line-clamp-2">{item.nombre}</p>
+                        {item.colorNombre && <p className="text-xs text-gris-medio">Color: {item.colorNombre}</p>}
                         <p className="text-rojo-principal font-bold">{formatPrice(item.precio)}</p>
                         <div className="flex items-center gap-2 mt-1">
-                          <button onClick={() => updateQuantity(item.productoId, item.cantidad - 1)}
+                          <button onClick={() => updateQuantity(itemKey(item), item.cantidad - 1)}
                             className="w-6 h-6 rounded border flex items-center justify-center text-sm hover:bg-gris-fondo">−</button>
                           <span className="text-sm w-4 text-center">{item.cantidad}</span>
-                          <button onClick={() => updateQuantity(item.productoId, item.cantidad + 1)}
-                            className="w-6 h-6 rounded border flex items-center justify-center text-sm hover:bg-gris-fondo">+</button>
+                          <button onClick={() => updateQuantity(itemKey(item), item.cantidad + 1)}
+                            disabled={item.stockMax !== undefined && item.cantidad >= item.stockMax}
+                            className="w-6 h-6 rounded border flex items-center justify-center text-sm hover:bg-gris-fondo disabled:opacity-30">+</button>
                         </div>
                       </div>
-                      <button onClick={() => removeItem(item.productoId)} className="text-gris-claro hover:text-red-500 p-1">
+                      <button onClick={() => removeItem(itemKey(item))} className="text-gris-claro hover:text-red-500 p-1">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -249,7 +259,7 @@ export default function CartDrawer() {
                       <CreditCard className="w-5 h-5" /> Pagar con tarjeta / QR
                     </button>
                     <div className="text-center">
-                      <button onClick={() => setStep('contacto')}
+                      <button onClick={() => { setError(''); setStep('contacto') }}
                         className="text-xs text-gris-medio hover:text-gris-oscuro underline underline-offset-2 transition-colors">
                         ¿Preferís que te contactemos? Dejá tus datos
                       </button>
@@ -351,6 +361,7 @@ export default function CartDrawer() {
                       <span className="text-rojo-principal">{formatPrice(totalConEnvio)}</span>
                     </div>
                   </div>
+                  {error && <p className="text-red-600 text-xs bg-red-50 px-3 py-2 rounded">{error}</p>}
                   <button type="submit" disabled={sending}
                     className="w-full bg-rojo-principal hover:bg-rojo-hover disabled:opacity-60 text-white font-bold py-3 rounded-lg transition-colors">
                     {sending ? 'Enviando...' : 'Confirmar pedido'}

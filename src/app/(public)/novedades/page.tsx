@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { INCLUDE_COLORES } from '@/lib/coloresServer'
 import ProductosOrdenables from '@/components/public/ProductosOrdenables'
 
 export const dynamic = 'force-dynamic'
@@ -6,7 +7,7 @@ export const dynamic = 'force-dynamic'
 export default async function NovedadesPage() {
   const productos = await prisma.producto.findMany({
     where: { activo: true, novedad: true },
-    include: { categoria: true },
+    include: { categoria: true, ...INCLUDE_COLORES },
     orderBy: { creadoEn: 'desc' },
   })
   return (

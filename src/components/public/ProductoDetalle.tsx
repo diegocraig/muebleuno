@@ -1,15 +1,17 @@
 'use client'
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { MessageCircle, ShoppingCart, ChevronDown, Ruler, Package, ShieldCheck } from 'lucide-react'
 import { formatPrice } from '@/lib/utils'
 import { useCart } from './CartProvider'
 import Cuotas12 from './Cuotas12'
+import { parseImagenes, colorSlug, imagenColor, type ColorProducto } from '@/lib/colores'
 
 interface Producto {
   id: number; nombre: string; precio: number; precioOferta?: number | null
   descripcion?: string | null; imagenes: string; stock: number
   datosUtiles?: string | null; infoEmbalaje?: string | null; garantia?: string | null
   categoria: { nombre: string; slug: string }
+  colores?: ColorProducto[]
 }
 
 function renderTexto(texto: string) {
@@ -118,8 +120,57 @@ function AccordionExclusivo({ producto }: { producto: Producto }) {
   )
 }
 
+function SelectorColor({ colores, actual, onSelect }: {
+  colores: ColorProducto[]; actual: number; onSelect: (idx: number) => void
+}) {
+  const color = colores[actual]
+  return (
+    <div className="mb-6">
+      <p className="text-sm mb-2.5">
+        <span className="text-gris-medio">Color: </span>
+        <span className="font-semibold text-gris-oscuro">{color?.nombre}</span>
+        {color && color.stock <= 0 && <span className="ml-2 text-xs font-semibold text-gris-medio">(Agotado)</span>}
+      </p>
+      <div className="flex flex-wrap gap-2.5">
+        {colores.map((c, i) => {
+          const agotado = c.stock <= 0
+          const img = imagenColor(c)
+          return (
+            <button
+              key={c.id}
+              type="button"
+              onClick={() => onSelect(i)}
+              title={agotado ? `${c.nombre} (agotado)` : c.nombre}
+              aria-label={c.nombre}
+              aria-pressed={i === actual}
+              className={`relative w-12 h-12 rounded-full p-0.5 border-2 transition-colors ${
+                i === actual ? 'border-rojo-principal' : 'border-gray-200 hover:border-gray-400'
+              }`}
+            >
+              <span
+                className={`block w-full h-full rounded-full bg-gris-fondo bg-cover bg-center ${agotado ? 'opacity-40' : ''}`}
+                style={c.hex ? { backgroundColor: c.hex } : img ? { backgroundImage: `url(${img})` } : undefined}
+              />
+              {agotado && (
+                <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <span className="block w-full h-0.5 bg-gris-medio/70 rotate-45" />
+                </span>
+              )}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export default function ProductoDetalle({ producto }: { producto: Producto }) {
-  const imagenes = JSON.parse(producto.imagenes || '[]') as string[]
+  const colores = producto.colores ?? []
+  const generales = parseImagenes(producto.imagenes)
+  // Por defecto, el primer color con stock (si todos están agotados, el primero).
+  const [colorIdx, setColorIdx] = useState(() => Math.max(0, colores.findIndex(c => c.stock > 0)))
+  const color: ColorProducto | undefined = colores[colorIdx]
+  const imagenes = color ? [...parseImagenes(color.imagenes), ...generales] : generales
   const [selectedIdx, setSelectedIdx] = useState(0)
   const [dragX, setDragX] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
@@ -127,6 +178,26 @@ export default function ProductoDetalle({ producto }: { producto: Producto }) {
   const { addItem } = useCart()
 
   const selectedImg = imagenes[selectedIdx] ?? ''
+
+  // ?color=verde-olivo permite compartir (o anunciar) el link directo a un color.
+  useEffect(() => {
+    const slug = new URLSearchParams(window.location.search).get('color')
+    if (!slug) return
+    const idx = colores.findIndex(c => colorSlug(c.nombre) === slug)
+    if (idx >= 0) setColorIdx(idx)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const elegirColor = (idx: number) => {
+    setColorIdx(idx)
+    setSelectedIdx(0)
+    const url = new URL(window.location.href)
+    url.searchParams.set('color', colorSlug(colores[idx].nombre))
+    window.history.replaceState(null, '', url)
+  }
+
+  const stock = color ? color.stock : producto.stock
+  const colorAgotado = !!color && color.stock <= 0
 
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX
@@ -158,13 +229,13 @@ export default function ProductoDetalle({ producto }: { producto: Producto }) {
 
   const precioFinal = producto.precioOferta ?? producto.precio
   const tieneOferta = !!producto.precioOferta && producto.precioOferta < producto.precio
-  const whatsappMsg = `Hola Facundo! Me interesa el producto: ${producto.nombre} (${formatPrice(precioFinal)}). ¿Tienen disponibilidad?`
+  const whatsappMsg = `Hola Facundo! Me interesa el producto: ${producto.nombre}${color ? ` en color ${color.nombre}` : ''} (${formatPrice(precioFinal)}). ¿Tienen disponibilidad?`
 
   return (
     <div>
       <div className="grid md:grid-cols-2 gap-10">
-        {/* Gallery */}
-        <div className="flex flex-col md:flex-row gap-3">
+        {/* Gallery — min-w-0: sin esto la tira de miniaturas (con muchas fotos) ensancha la grilla en celular */}
+        <div className="flex flex-col md:flex-row gap-3 min-w-0">
           {imagenes.length > 1 && (
             <div className="flex md:flex-col gap-2 overflow-x-auto md:overflow-x-visible md:overflow-y-auto order-2 md:order-1 pb-1 md:pb-0">
               {imagenes.map((img, i) => (
@@ -184,6 +255,7 @@ export default function ProductoDetalle({ producto }: { producto: Producto }) {
           >
             {imagenes.length > 0 ? (
               <div
+                key={color?.id ?? 0}
                 className="flex h-full"
                 style={{
                   width: `${imagenes.length * 100}%`,
@@ -228,13 +300,22 @@ export default function ProductoDetalle({ producto }: { producto: Producto }) {
             <p className="text-gris-medio leading-relaxed mb-6 text-sm">{producto.descripcion}</p>
           )}
 
+          {colores.length > 0 && <SelectorColor colores={colores} actual={colorIdx} onSelect={elegirColor} />}
+
           <div className="flex flex-col gap-3">
             <button
-              onClick={() => addItem({ productoId: producto.id, nombre: producto.nombre, precio: precioFinal, imagen: selectedImg })}
-              className="flex items-center justify-center gap-2 bg-rojo-principal hover:bg-rojo-hover text-white font-bold py-4 px-6 rounded-xl transition-colors text-lg"
+              onClick={() => addItem({
+                productoId: producto.id,
+                nombre: producto.nombre,
+                precio: precioFinal,
+                imagen: color ? imagenColor(color) || selectedImg : selectedImg,
+                ...(color ? { colorId: color.id, colorNombre: color.nombre, stockMax: color.stock } : {}),
+              })}
+              disabled={colorAgotado}
+              className="flex items-center justify-center gap-2 bg-rojo-principal hover:bg-rojo-hover disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-4 px-6 rounded-xl transition-colors text-lg"
             >
               <ShoppingCart className="w-5 h-5" />
-              Agregar al carrito
+              {colorAgotado ? `Sin stock en ${color.nombre}` : 'Agregar al carrito'}
             </button>
             <a
               href={`https://wa.me/5491173670283?text=${encodeURIComponent(whatsappMsg)}`}
@@ -247,12 +328,12 @@ export default function ProductoDetalle({ producto }: { producto: Producto }) {
             </a>
           </div>
 
-          {producto.stock > 3 && (
+          {stock > 3 && (
             <p className="text-green-600 text-sm font-medium mt-4">✓ En stock</p>
           )}
-          {producto.stock > 0 && producto.stock <= 3 && (
+          {stock > 0 && stock <= 3 && (
             <p className="text-orange-500 text-sm font-semibold mt-4">
-              ⚡ ¡Quedan solo {producto.stock} {producto.stock === 1 ? 'unidad' : 'unidades'}!
+              ⚡ ¡Quedan solo {stock} {stock === 1 ? 'unidad' : 'unidades'}{color ? ` en ${color.nombre}` : ''}!
             </p>
           )}
         </div>

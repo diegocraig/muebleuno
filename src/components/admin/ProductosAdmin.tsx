@@ -2,10 +2,13 @@
 import { useState } from 'react'
 import { Plus, Pencil, Trash2, CheckCircle, XCircle } from 'lucide-react'
 import { formatPrice, slugify } from '@/lib/utils'
+import { imagenesProducto } from '@/lib/colores'
 import ImageUploader from './ImageUploader'
+import ColoresEditor, { colorFormDesdeDb, coloresParaApi, type ColorForm } from './ColoresEditor'
 
 interface Categoria { id: number; nombre: string; slug: string }
 interface Subcategoria { id: number; nombre: string; slug: string; categoriaId: number }
+interface Color { id: number; nombre: string; hex?: string | null; imagenes: string; stock: number }
 interface Producto {
   id: number; nombre: string; slug: string; precio: number; precioOferta?: number | null
   imagenes: string; stock: number; destacado: boolean; novedad: boolean
@@ -13,6 +16,7 @@ interface Producto {
   subcategoriaId?: number | null; subcategoria?: Subcategoria | null
   descripcion?: string | null; volumen?: number | null; datosUtiles?: string | null
   infoEmbalaje?: string | null; garantia?: string | null
+  colores?: Color[]
 }
 
 const emptyForm = {
@@ -20,6 +24,7 @@ const emptyForm = {
   precio: '', precioOferta: '', categoriaId: '', subcategoriaId: '',
   stock: '0', destacado: false, novedad: false, enPromocion: false, activo: true,
   imagenes: [] as string[],
+  colores: [] as ColorForm[],
 }
 
 export default function ProductosAdmin({
@@ -36,6 +41,7 @@ export default function ProductosAdmin({
   const [editing, setEditing] = useState<number | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
   const [filtroCategoria, setFiltroCategoria] = useState('')
   const [buscar, setBuscar] = useState('')
 
@@ -48,7 +54,7 @@ export default function ProductosAdmin({
     form.categoriaId && s.categoriaId === parseInt(form.categoriaId)
   )
 
-  const openNew = () => { setForm(emptyForm); setEditing(null); setShowForm(true) }
+  const openNew = () => { setForm(emptyForm); setEditing(null); setError(''); setShowForm(true) }
   const openEdit = (p: Producto) => {
     setForm({
       nombre: p.nombre, slug: p.slug, descripcion: p.descripcion ?? '',
@@ -60,18 +66,27 @@ export default function ProductosAdmin({
       stock: String(p.stock),
       destacado: p.destacado, novedad: p.novedad, enPromocion: p.enPromocion, activo: p.activo,
       imagenes: JSON.parse(p.imagenes || '[]'),
+      colores: (p.colores ?? []).map(colorFormDesdeDb),
     })
-    setEditing(p.id); setShowForm(true)
+    setEditing(p.id); setError(''); setShowForm(true)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    const sinFoto = form.colores.find(c => c.imagenes.length === 0)
+    if (sinFoto) { setError(`Cargá al menos una foto para el color "${sinFoto.nombre || 'sin nombre'}".`); return }
     setLoading(true)
-    const body = { ...form, slug: form.slug || slugify(form.nombre) }
+    setError('')
+    const body = { ...form, slug: form.slug || slugify(form.nombre), colores: coloresParaApi(form.colores) }
     const url = editing ? `/api/productos/${editing}` : '/api/productos'
     const method = editing ? 'PUT' : 'POST'
     const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-    const data = await res.json()
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      setError(data.error ?? 'No se pudo guardar el producto')
+      setLoading(false)
+      return
+    }
     if (editing) {
       setProductos(prev => prev.map(p => p.id === editing ? data : p))
     } else {
@@ -119,7 +134,7 @@ export default function ProductosAdmin({
           </thead>
           <tbody className="divide-y">
             {filtrados.map(p => {
-              const imgs = JSON.parse(p.imagenes || '[]')
+              const imgs = imagenesProducto(p)
               return (
                 <tr key={p.id} onClick={() => openEdit(p)} className="hover:bg-gris-fondo/50 cursor-pointer">
                   <td className="px-4 py-3">
@@ -127,7 +142,14 @@ export default function ProductosAdmin({
                       <div className="w-10 h-10 rounded bg-gris-fondo overflow-hidden shrink-0">
                         {imgs[0] && <img src={imgs[0]} alt="" className="w-full h-full object-cover" />}
                       </div>
-                      <span className="font-medium line-clamp-1">{p.nombre}</span>
+                      <div className="min-w-0">
+                        <span className="font-medium line-clamp-1">{p.nombre}</span>
+                        {!!p.colores?.length && (
+                          <span className="text-xs text-gris-claro">
+                            {p.colores.length} {p.colores.length === 1 ? 'color' : 'colores'}: {p.colores.map(c => c.nombre).join(', ')}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </td>
                   <td className="px-4 py-3">
@@ -214,8 +236,16 @@ export default function ProductosAdmin({
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Stock</label>
-                  <input type="number" min="0" value={form.stock} onChange={e => setForm(f => ({ ...f, stock: e.target.value }))}
-                    className="w-full border rounded-lg px-3 py-2 text-sm" />
+                  {form.colores.length > 0 ? (
+                    <>
+                      <input type="number" disabled value={form.colores.reduce((n, c) => n + (parseInt(c.stock) || 0), 0)}
+                        className="w-full border rounded-lg px-3 py-2 text-sm bg-gris-fondo text-gris-medio" />
+                      <p className="text-xs text-gris-claro mt-1">Suma del stock de cada color.</p>
+                    </>
+                  ) : (
+                    <input type="number" min="0" value={form.stock} onChange={e => setForm(f => ({ ...f, stock: e.target.value }))}
+                      className="w-full border rounded-lg px-3 py-2 text-sm" />
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Volumen (litros)</label>
@@ -272,7 +302,17 @@ export default function ProductosAdmin({
                 </div>
               </div>
 
-              <ImageUploader context="producto" images={form.imagenes} onChange={imgs => setForm(f => ({ ...f, imagenes: imgs }))} />
+              <div>
+                {form.colores.length > 0 && (
+                  <p className="text-xs text-gris-claro mb-1.5">
+                    Fotos generales (ambientes, detalles): se muestran después de las fotos del color elegido.
+                    Si no cargás ninguna, en los listados se usa la primera foto del primer color.
+                  </p>
+                )}
+                <ImageUploader context="producto" images={form.imagenes} onChange={imgs => setForm(f => ({ ...f, imagenes: imgs }))} />
+              </div>
+
+              <ColoresEditor colores={form.colores} onChange={fn => setForm(f => ({ ...f, colores: fn(f.colores) }))} />
 
               <div className="flex flex-wrap gap-4">
                 {([['destacado', 'Destacado'], ['novedad', 'Novedad'], ['enPromocion', 'En promoción'], ['activo', 'Activo']] as const).map(([key, label]) => (
@@ -282,6 +322,8 @@ export default function ProductosAdmin({
                   </label>
                 ))}
               </div>
+
+              {error && <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded">{error}</p>}
 
               <div className="flex gap-3 pt-2">
                 <button type="submit" disabled={loading}

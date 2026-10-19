@@ -58,6 +58,24 @@ model Producto {
   creadoEn        DateTime      @default(now())
   actualizadoEn   DateTime      @updatedAt
   reviews         Review[]
+  colores         ProductoColor[]
+}
+
+// Variante de color de un producto: nombre libre ("Verde olivo"), muestra
+// opcional, fotos propias y stock propio. Si un producto tiene colores,
+// Producto.stock se mantiene como la suma de los stocks de sus colores.
+model ProductoColor {
+  id         Int      @id @default(autoincrement())
+  productoId Int
+  producto   Producto @relation(fields: [productoId], references: [id], onDelete: Cascade)
+  nombre     String
+  hex        String?
+  imagenes   String   @default("[]")
+  stock      Int      @default(0)
+  orden      Int      @default(0)
+  creadoEn   DateTime @default(now())
+
+  @@index([productoId])
 }
 
 model Review {

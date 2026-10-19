@@ -6,9 +6,11 @@ export interface PedidoItemDetalle {
   precio: number
   cantidad: number
   slug?: string
+  colorNombre?: string
+  imagen?: string
 }
 
-const parseItems = (s: string): { productoId: number; cantidad: number; nombre?: string; precio?: number }[] => {
+const parseItems = (s: string): { productoId: number; cantidad: number; nombre?: string; precio?: number; colorNombre?: string; imagen?: string }[] => {
   try { return JSON.parse(s) || [] } catch { return [] }
 }
 
@@ -43,6 +45,8 @@ export async function getPedidosEnriquecidos(opts?: { take?: number }) {
         cantidad: i.cantidad,
         precio: i.precio ?? prod?.precioOferta ?? prod?.precio ?? 0,
         slug: prod?.slug,
+        colorNombre: i.colorNombre,
+        imagen: i.imagen,
       }
     }),
   }))

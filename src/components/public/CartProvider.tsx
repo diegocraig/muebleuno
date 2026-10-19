@@ -4,13 +4,20 @@ import { trackPixel, MONEDA } from '@/lib/pixel'
 
 const STORAGE_KEY = 'muebleuno_cart'
 
-interface CartItem {
+export interface CartItem {
   productoId: number
   nombre: string
   precio: number
   imagen: string
   cantidad: number
+  colorId?: number
+  colorNombre?: string
+  /** Stock del color al agregarlo: tope de cantidad en el carrito (el server revalida). */
+  stockMax?: number
 }
+
+/** Una línea por producto + color: el mismo rack en dos colores son dos líneas. */
+export const itemKey = (i: Pick<CartItem, 'productoId' | 'colorId'>) => `${i.productoId}:${i.colorId ?? 0}`
 
 export interface TipoEnvio {
   id: number
@@ -22,8 +29,8 @@ export interface TipoEnvio {
 interface CartContextType {
   items: CartItem[]
   addItem: (item: Omit<CartItem, 'cantidad'>) => void
-  removeItem: (productoId: number) => void
-  updateQuantity: (productoId: number, cantidad: number) => void
+  removeItem: (key: string) => void
+  updateQuantity: (key: string, cantidad: number) => void
   clear: () => void
   total: number
   count: number
@@ -70,21 +77,25 @@ export default function CartProvider({ children }: { children: React.ReactNode }
       value: item.precio,
       currency: MONEDA,
     })
+    const key = itemKey(item)
     setItems(prev => {
-      const exists = prev.find(i => i.productoId === item.productoId)
-      if (exists) return prev.map(i => i.productoId === item.productoId ? { ...i, cantidad: i.cantidad + 1 } : i)
+      const exists = prev.find(i => itemKey(i) === key)
+      if (exists) {
+        const tope = item.stockMax ?? Infinity
+        return prev.map(i => itemKey(i) === key ? { ...i, ...item, cantidad: Math.min(i.cantidad + 1, tope) } : i)
+      }
       return [...prev, { ...item, cantidad: 1 }]
     })
     setIsOpen(true)
   }, [])
 
-  const removeItem = useCallback((productoId: number) => {
-    setItems(prev => prev.filter(i => i.productoId !== productoId))
+  const removeItem = useCallback((key: string) => {
+    setItems(prev => prev.filter(i => itemKey(i) !== key))
   }, [])
 
-  const updateQuantity = useCallback((productoId: number, cantidad: number) => {
-    if (cantidad <= 0) { removeItem(productoId); return }
-    setItems(prev => prev.map(i => i.productoId === productoId ? { ...i, cantidad } : i))
+  const updateQuantity = useCallback((key: string, cantidad: number) => {
+    if (cantidad <= 0) { removeItem(key); return }
+    setItems(prev => prev.map(i => itemKey(i) === key ? { ...i, cantidad: Math.min(cantidad, i.stockMax ?? Infinity) } : i))
   }, [removeItem])
 
   const clear = useCallback(() => {

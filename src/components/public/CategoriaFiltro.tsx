@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import ProductoGrid from './ProductoGrid'
+import type { ColorProducto } from '@/lib/colores'
 
 type Orden = '' | 'precio_asc' | 'precio_desc' | 'volumen_asc' | 'volumen_desc' | 'nombre'
 
@@ -11,6 +12,7 @@ interface Producto {
   volumen?: number | null
   categoria: { nombre: string; slug: string }
   subcategoriaId?: number | null
+  colores?: ColorProducto[]
 }
 
 interface Props {

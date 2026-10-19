@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { INCLUDE_COLORES } from '@/lib/coloresServer'
 import ProductoGrid from '@/components/public/ProductoGrid'
 import FiltroSidebar from '@/components/public/FiltroSidebar'
 import OrdenSelector from '@/components/public/OrdenSelector'
@@ -38,7 +39,7 @@ export default async function ProductosPage({ searchParams }: PageProps) {
   const [total, productos, categorias] = await Promise.all([
     prisma.producto.count({ where }),
     prisma.producto.findMany({
-      where, include: { categoria: true },
+      where, include: { categoria: true, ...INCLUDE_COLORES },
       orderBy, skip: (page - 1) * limit, take: limit,
     }),
     prisma.categoria.findMany({ where: { activa: true }, orderBy: { orden: 'asc' } }),

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { INCLUDE_COLORES } from '@/lib/coloresServer'
 
 export async function GET(req: NextRequest) {
   const q = new URL(req.url).searchParams.get('q') ?? ''
@@ -13,7 +14,7 @@ export async function GET(req: NextRequest) {
         { descripcion: { contains: q } },
       ],
     },
-    include: { categoria: true },
+    include: { categoria: true, ...INCLUDE_COLORES },
     take: 10,
   })
   return NextResponse.json(productos)
