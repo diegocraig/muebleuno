@@ -51,21 +51,30 @@ export function useCart() {
 }
 
 export default function CartProvider({ children }: { children: React.ReactNode }) {
-  const [items, setItems] = useState<CartItem[]>(() => {
-    if (typeof window === 'undefined') return []
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY)
-      return saved ? JSON.parse(saved) : []
-    } catch {
-      return []
-    }
-  })
+  // Arranca vacío igual que el HTML del server; leer localStorage en el render
+  // inicial hacía que el cliente hidratara con items y React tiraba el #418.
+  const [items, setItems] = useState<CartItem[]>([])
+  const [cargado, setCargado] = useState(false)
   const [isOpen, setIsOpen] = useState(false)
   const [tipoEnvio, setTipoEnvio] = useState<TipoEnvio | null>(null)
 
   useEffect(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        // Si ya se agregó algo antes de terminar de montar, no lo pisa.
+        if (Array.isArray(parsed)) setItems(prev => prev.length ? prev : parsed)
+      }
+    } catch {}
+    setCargado(true)
+  }, [])
+
+  useEffect(() => {
+    // Hasta haber leído lo guardado no se escribe, o el [] inicial lo borraría.
+    if (!cargado) return
     localStorage.setItem(STORAGE_KEY, JSON.stringify(items))
-  }, [items])
+  }, [items, cargado])
 
   const addItem = useCallback((item: Omit<CartItem, 'cantidad'>) => {
     // AddToCart va acá y no en los botones para cubrir de una vez la ficha de
