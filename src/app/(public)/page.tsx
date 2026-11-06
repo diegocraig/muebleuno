@@ -6,11 +6,9 @@ import CategoriaGrid from '@/components/public/CategoriaGrid'
 import ProductoGrid from '@/components/public/ProductoGrid'
 import BannerDestacado from '@/components/public/BannerDestacado'
 import PromoPopup from '@/components/public/PromoPopup'
+import { promo12CuotasActiva } from '@/lib/promos'
 
 export const dynamic = 'force-dynamic'
-
-// Popup "Día de la Madre": se deja de mostrar solo al terminar el 18/10 (hora Argentina).
-const PROMO_HASTA = Date.parse('2026-10-19T00:00:00-03:00')
 
 async function getData() {
   const [sliderItems, categorias, destacados, novedades, config] = await Promise.all([
@@ -28,12 +26,12 @@ export default async function HomePage() {
 
   return (
     <>
-      {Date.now() < PROMO_HASTA && (
+      {promo12CuotasActiva() && (
         <PromoPopup
-          src="/promos/dia-de-la-madre-2026.webp"
-          alt="Feliz Día de la Madre — 12 cuotas sin interés en la web y 10% off en stock del local, del 11/10 al 18/10"
-          width={1122}
-          height={1402}
+          src="/promos/12-cuotas-6-y-7-noviembre.webp"
+          alt="Viernes 6 y sábado 7: 12 cuotas sin interés en nuestro local y en la web. Solo productos standard, no incluye muebles a medida"
+          width={900}
+          height={1600}
         />
       )}
       <HeroSlider items={sliderItems} intervalo={config?.sliderIntervalo ?? 5} transicion={config?.sliderTransicion ?? 'fade'} />
