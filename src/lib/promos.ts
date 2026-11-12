@@ -1,6 +1,12 @@
-// Promo "12 cuotas sin interés": visible hasta el 07/11/2026 inclusive (hora Argentina).
-const PROMO_12_CUOTAS_FIN = new Date('2026-11-08T00:00:00-03:00')
+// Promo "12 cuotas sin interés" (hora Argentina): visible desde INICIO inclusive hasta FIN exclusive.
+// Actual: viernes 13 y sábado 14/11/2026.
+const PROMO_12_CUOTAS_INICIO = new Date('2026-11-13T00:00:00-03:00')
+const PROMO_12_CUOTAS_FIN = new Date('2026-11-15T00:00:00-03:00')
 
 export function promo12CuotasActiva(ahora: Date = new Date()) {
-  return ahora < PROMO_12_CUOTAS_FIN
+  return ahora >= PROMO_12_CUOTAS_INICIO && ahora < PROMO_12_CUOTAS_FIN
 }
+
+// Flyer del popup de portada. null = la promo corre sin popup.
+// Para usar uno: subir la imagen a public/promos/ y completar { src, alt, width, height }.
+export const PROMO_12_CUOTAS_FLYER: { src: string; alt: string; width: number; height: number } | null = null

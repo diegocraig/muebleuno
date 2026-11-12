@@ -6,7 +6,7 @@ import CategoriaGrid from '@/components/public/CategoriaGrid'
 import ProductoGrid from '@/components/public/ProductoGrid'
 import BannerDestacado from '@/components/public/BannerDestacado'
 import PromoPopup from '@/components/public/PromoPopup'
-import { promo12CuotasActiva } from '@/lib/promos'
+import { promo12CuotasActiva, PROMO_12_CUOTAS_FLYER } from '@/lib/promos'
 
 export const dynamic = 'force-dynamic'
 
@@ -26,14 +26,7 @@ export default async function HomePage() {
 
   return (
     <>
-      {promo12CuotasActiva() && (
-        <PromoPopup
-          src="/promos/12-cuotas-6-y-7-noviembre.webp"
-          alt="Viernes 6 y sábado 7: 12 cuotas sin interés en nuestro local y en la web. Solo productos standard, no incluye muebles a medida"
-          width={900}
-          height={1600}
-        />
-      )}
+      {promo12CuotasActiva() && PROMO_12_CUOTAS_FLYER && <PromoPopup {...PROMO_12_CUOTAS_FLYER} />}
       <HeroSlider items={sliderItems} intervalo={config?.sliderIntervalo ?? 5} transicion={config?.sliderTransicion ?? 'fade'} />
       <BeneficiosBar />
       <section className="max-w-7xl mx-auto px-4 py-12">
