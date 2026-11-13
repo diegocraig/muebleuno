@@ -9,4 +9,9 @@ export function promo12CuotasActiva(ahora: Date = new Date()) {
 
 // Flyer del popup de portada. null = la promo corre sin popup.
 // Para usar uno: subir la imagen a public/promos/ y completar { src, alt, width, height }.
-export const PROMO_12_CUOTAS_FLYER: { src: string; alt: string; width: number; height: number } | null = null
+export const PROMO_12_CUOTAS_FLYER: { src: string; alt: string; width: number; height: number } | null = {
+  src: '/promos/12-cuotas-13-y-14-noviembre.webp',
+  alt: 'Viernes y sábado: 12 cuotas sin interés en nuestro local y la web. Solo productos standard, no incluye productos a medida',
+  width: 900,
+  height: 1600,
+}
