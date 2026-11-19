@@ -1,7 +1,7 @@
 // Promo "12 cuotas sin interés" (hora Argentina): visible desde INICIO inclusive hasta FIN exclusive.
-// Actual: viernes 13 y sábado 14/11/2026.
-const PROMO_12_CUOTAS_INICIO = new Date('2026-11-13T00:00:00-03:00')
-const PROMO_12_CUOTAS_FIN = new Date('2026-11-15T00:00:00-03:00')
+// Actual: viernes 20 y sábado 21/11/2026.
+const PROMO_12_CUOTAS_INICIO = new Date('2026-11-20T00:00:00-03:00')
+const PROMO_12_CUOTAS_FIN = new Date('2026-11-22T00:00:00-03:00')
 
 export function promo12CuotasActiva(ahora: Date = new Date()) {
   return ahora >= PROMO_12_CUOTAS_INICIO && ahora < PROMO_12_CUOTAS_FIN
