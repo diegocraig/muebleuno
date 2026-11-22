@@ -9,6 +9,7 @@ import {
   primerHueco, productoPorAncho, topeMesada, transformar, uid,
 } from '@/lib/render/escena'
 import { preset } from '@/lib/render/materiales'
+import { NOMBRE_PARED } from '@/lib/render/tipos'
 import type { PresetDeco } from '@/lib/render/deco'
 
 export type Camara = 'perspectiva' | 'planta' | 'frente'
@@ -105,6 +106,104 @@ function itemDeProducto(p: ProductoCatalogo, def: NonNullable<ProductoCatalogo['
     ...(def.cuerpo ? { cuerpo: preset(def.cuerpo) } : {}),
     ...extra,
   }
+}
+
+// ─── Esquinero automático ───────────────────────────────────────────────────
+
+/** Para cada extremo de una pared: con qué pared hace esquina y en qué extremo de esa vecina. */
+const ESQUINAS: Record<Pared, { fin: boolean; vecina: Pared; vecinaAlFinal: boolean }[]> = {
+  fondo: [{ fin: false, vecina: 'izq', vecinaAlFinal: false }, { fin: true, vecina: 'der', vecinaAlFinal: false }],
+  frente: [{ fin: false, vecina: 'izq', vecinaAlFinal: true }, { fin: true, vecina: 'der', vecinaAlFinal: true }],
+  izq: [{ fin: false, vecina: 'fondo', vecinaAlFinal: false }, { fin: true, vecina: 'frente', vecinaAlFinal: false }],
+  der: [{ fin: false, vecina: 'fondo', vecinaAlFinal: true }, { fin: true, vecina: 'frente', vecinaAlFinal: true }],
+}
+
+/**
+ * Al completar `pared`: si la pared vecina ya tiene un tramo del mismo nivel que
+ * llega hasta el rincón, completar así dejaría una esquina ciega (un módulo tapa
+ * el frente del otro). En ese caso se pone el esquinero del catálogo en el rincón
+ * y se reemplazan los módulos de la vecina que caían en esa zona por otros que
+ * llenen el espacio que queda.
+ *
+ * No toca nada si en la zona hay algo que no sea un módulo simple del catálogo
+ * (bloqueado, combo, a medida, electrodoméstico) o una puerta/ventana.
+ * Devuelve qué hizo, para el aviso.
+ */
+function esquineroAutomatico(
+  esc: Escena, pared: Pared, tipoMod: 'bajo' | 'alacena',
+  mapa: Map<number, ProductoCatalogo>, esquinero: ProductoCatalogo | undefined,
+): { vecina: Pared; reemplazados: number }[] {
+  const hechos: { vecina: Pared; reemplazados: number }[] = []
+  if (!esquinero?.def) return hechos
+  const eW = esquinero.def.ancho
+  const L = largoPared(esc, pared)
+  const anchos = [...mapa.keys()]
+  const suma = (v: number[]) => v.reduce((a, b) => a + b, 0)
+
+  for (const { fin, vecina, vecinaAlFinal } of ESQUINAS[pared]) {
+    if (!esc.ambiente.paredes[vecina] || L < eW + 30) continue
+    const LA = largoPared(esc, vecina)
+    /** Distancia al rincón, a lo largo de la vecina: [borde cercano, borde lejano]. */
+    const dist = (o: Item): [number, number] => {
+      const w = medidas(o).ancho
+      return vecinaAlFinal ? [LA - (o.s + w), LA - o.s] : [o.s, o.s + w]
+    }
+    const nuevo = itemDeProducto(esquinero, esquinero.def, esc, { ubicacion: pared, s: fin ? L - eW : 0 })
+    nuevo.esquina = esquinaPorDefecto(pared, nuevo.s, L)
+    const cE = caja(nuevo, esc)
+    // Para los bajos la banda llega hasta arriba de la mesada: no se saca un módulo con bacha o anafe encima.
+    const y1 = tipoMod === 'bajo' ? topeMesada(esc.estandares) + 30 : cE.y1
+    const enBanda = (o: Item) => { const c = caja(o, esc); return c.y0 < y1 - 0.5 && cE.y0 < c.y1 - 0.5 }
+    const enRincon = (o: Item) => { const c = caja(o, esc); return c.x0 < cE.x1 - 0.5 && cE.x0 < c.x1 - 0.5 && c.z0 < cE.z1 - 0.5 && cE.z0 < c.z1 - 0.5 }
+
+    // ¿Ya hay un esquinero ahí? ¿Hay una puerta o ventana en la zona?
+    if (esc.items.some(o => o.modulo?.tipo.startsWith('esquinero') && enBanda(o) && enRincon(o))) continue
+    const abertura = esc.ambiente.aberturas.some(ab => {
+      if (!(ab.elevacion < cE.y1 && cE.y0 < ab.elevacion + ab.alto)) return false
+      if (ab.pared === pared) return fin ? ab.s + ab.ancho > L - eW : ab.s < eW
+      if (ab.pared === vecina) return vecinaAlFinal ? ab.s + ab.ancho > LA - eW : ab.s < eW
+      return false
+    })
+    if (abertura) continue
+
+    // El tramo de la vecina tiene que llegar hasta el rincón con un módulo de este nivel.
+    const deVecina = esc.items.filter(o => o.ubicacion === vecina && !o.deco && enBanda(o)).sort((a, b) => dist(a)[0] - dist(b)[0])
+    const primero = deVecina[0]
+    if (!primero || dist(primero)[0] > 1 || primero.modulo?.tipo !== tipoMod) continue
+    // Y en esta pared el rincón tiene que estar libre.
+    if (esc.items.some(o => o.ubicacion === pared && !o.deco && enBanda(o) && (fin ? o.s + medidas(o).ancho > L - eW + 0.5 : o.s < eW - 0.5))) continue
+
+    // Módulos de la vecina a reemplazar: los que caen en la zona del esquinero y, si
+    // lo que sobra no se puede llenar justo con anchos del catálogo, el siguiente también.
+    const reemplazable = (o: Item) => o.origen === 'producto' && o.modulo?.tipo === tipoMod && !o.bloqueado && !o.grupo
+    const quitar: Item[] = []
+    let hasta = 0, viable = true
+    for (const o of deVecina) {
+      const [d0, d1] = dist(o)
+      if (d0 >= eW - 0.5) {
+        const g = hasta - eW
+        const llena = g < 1 || suma(combinarAnchos(g, anchos)) >= g - 0.5
+        if (llena || d0 > hasta + 1) break
+      }
+      if (!reemplazable(o) || quitar.length >= 4) { viable = false; break }
+      quitar.push(o)
+      hasta = Math.max(hasta, d1)
+    }
+    if (!viable || !quitar.length) continue
+
+    const ids = new Set(quitar.map(o => o.id))
+    esc.items = esc.items.filter(o => !ids.has(o.id))
+    esc.items.push(nuevo)
+    // Se llena lo que quedó de la vecina, desde el esquinero hacia afuera.
+    let d = eW
+    for (const w of hasta - eW >= 1 ? combinarAnchos(hasta - eW, anchos) : []) {
+      const p = mapa.get(w)!
+      esc.items.push(itemDeProducto(p, p.def!, esc, { ubicacion: vecina, s: vecinaAlFinal ? LA - d - w : d }))
+      d += w
+    }
+    hechos.push({ vecina, reemplazados: quitar.length })
+  }
+  return hechos
 }
 
 export const useRender = create<Estado>((set, get) => ({
@@ -494,11 +593,18 @@ export const useRender = create<Estado>((set, get) => ({
     const { catalogo } = get()
     const bajos = productoPorAncho(catalogo, 'bajo')
     const alacenas = productoPorAncho(catalogo, 'alacena', 60)
+    // Esquineros del catálogo (el más barato de cada nivel, sin colores especiales).
+    const esquineroDe = (tipo: 'esquinero-bajo' | 'esquinero-alto') => catalogo
+      .filter(p => p.grupo === 'esquinero' && p.def?.tipo === tipo && !p.def.frente)
+      .sort((a, b) => a.precio - b.precio)[0]
     let agregados = 0
+    const esquinas: { vecina: Pared; reemplazados: number }[] = []
     get().mutar(esc => {
-      for (const [mapa] of [[bajos], [alacenas]] as const) {
+      for (const [mapa, tipoMod] of [[bajos, 'bajo'], [alacenas, 'alacena']] as const) {
         const anchos = [...mapa.keys()]
         if (!anchos.length) continue
+        // Antes de llenar: si la pared vecina ya llega al rincón, va un esquinero.
+        esquinas.push(...esquineroAutomatico(esc, pared, tipoMod, mapa, esquineroDe(tipoMod === 'bajo' ? 'esquinero-bajo' : 'esquinero-alto')))
         const muestra = mapa.get(anchos[0])!
         const prueba = itemDeProducto(muestra, muestra.def!, esc, { ubicacion: pared })
         // Huecos libres en esa banda de altura.
@@ -541,7 +647,15 @@ export const useRender = create<Estado>((set, get) => ({
         }
       }
     })
-    get().avisar(agregados ? `Agregué ${agregados} módulos en la pared` : 'No quedan huecos para completar en esa pared', agregados ? 'ok' : 'error')
+    // Si el mueble seleccionado fue reemplazado por el esquinero, se deselecciona.
+    if (!get().escena.items.some(i => i.id === get().seleccion)) set({ seleccion: null })
+    if (esquinas.length) {
+      const paredes = [...new Set(esquinas.map(e => NOMBRE_PARED[e.vecina].toLowerCase()))].join(' y ')
+      const reemplazados = esquinas.reduce((a, e) => a + e.reemplazados, 0)
+      get().avisar(`Puse ${esquinas.length === 1 ? 'un esquinero' : `${esquinas.length} esquineros`} en la esquina con la ${paredes} y reacomodé ${reemplazados} ${reemplazados === 1 ? 'módulo' : 'módulos'} de ahí${agregados ? `; agregué ${agregados} más en esta pared` : ''}. Ctrl+Z lo deshace.`)
+    } else {
+      get().avisar(agregados ? `Agregué ${agregados} módulos en la pared` : 'No quedan huecos para completar en esa pared', agregados ? 'ok' : 'error')
+    }
   },
 }))
 
