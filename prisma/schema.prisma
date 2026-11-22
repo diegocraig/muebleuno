@@ -205,3 +205,53 @@ model MedidaFoto {
   orden  Int     @default(0)
   activo Boolean @default(true)
 }
+
+// ─── Módulo /render (configurador 3D de cocinas, solo admin) ─────────────────
+
+// Proyecto de cocina: la escena completa (ambiente, muebles, luces, materiales)
+// va serializada en `datos`; los extras del presupuesto en `presupuesto`.
+model RenderProyecto {
+  id            Int      @id @default(autoincrement())
+  nombre        String
+  cliente       String?
+  email         String?
+  telefono      String?
+  datos         String
+  presupuesto   String   @default("{}")
+  total         Float    @default(0)
+  estado        String   @default("borrador") // borrador | presupuesto | venta
+  captura       String?  // JPEG data URL chico, para el listado y el presupuesto impreso
+  pedidoId      Int?
+  creadoEn      DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+}
+
+// Ajuste manual de cómo se dibuja un producto del catálogo (medidas, frentes,
+// tipo). Si no hay fila, las medidas se deducen del nombre del producto.
+model RenderModulo {
+  productoId    Int      @id
+  datos         String
+  actualizadoEn DateTime @updatedAt
+}
+
+// Base de medidas de electrodomésticos y bachas por marca/modelo (cm).
+model Electrodomestico {
+  id          Int     @id @default(autoincrement())
+  tipo        String  // cocina | anafe | horno | heladera | microondas | campana | lavavajillas | bacha | lavarropas
+  marca       String
+  modelo      String
+  ancho       Float
+  alto        Float
+  profundidad Float
+  caladoAncho Float?
+  caladoProf  Float?
+  acabado     String  @default("inox")
+  empotrable  Boolean @default(false)
+  precio      Float?
+  fuente      String?
+  verificado  Boolean @default(false)
+  activo      Boolean @default(true)
+  creadoEn    DateTime @default(now())
+
+  @@index([tipo])
+}
