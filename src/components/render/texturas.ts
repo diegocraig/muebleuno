@@ -332,3 +332,75 @@ export function matColor(color: string, rugosidad = 0.4, metalico = 0) {
   if (!m) { m = fijo({ color, roughness: rugosidad, metalness: metalico }); cacheColor.set(k, m) }
   return m
 }
+
+// ─── Cuadros ────────────────────────────────────────────────────────────────
+
+const PALETAS: string[][] = [
+  ['#c0272d', '#1e1e1e', '#e9dfcf', '#b9895a'],
+  ['#2f4b56', '#7f9c8a', '#e4d9c6', '#c9a77e'],
+  ['#d97b4a', '#f2c46d', '#3e5c50', '#efe9df'],
+  ['#1e1e1e', '#8d8f8e', '#d9d8d4', '#c0272d'],
+  ['#6f7552', '#b7c2ae', '#e8e4dc', '#4a3426'],
+]
+
+const cacheArte = new Map<string, THREE.Texture>()
+
+/** Arte abstracto generado por semilla (formas, bandas o círculos). */
+export function texturaArte(variante: number, fondo: string): THREE.Texture {
+  const k = `${variante}|${fondo}`
+  const hit = cacheArte.get(k)
+  if (hit) return hit
+  const c = document.createElement('canvas')
+  c.width = c.height = 512
+  const ctx = c.getContext('2d')!
+  const r = azar(variante * 7919 + 13)
+  const pal = PALETAS[variante % PALETAS.length]
+  ctx.fillStyle = fondo
+  ctx.fillRect(0, 0, 512, 512)
+  const estilo = variante % 3
+  if (estilo === 0) {
+    // composición de bloques
+    for (let i = 0; i < 7; i++) {
+      ctx.fillStyle = pal[Math.floor(r() * pal.length)]
+      ctx.globalAlpha = 0.75 + r() * 0.25
+      ctx.fillRect(r() * 400, r() * 400, 60 + r() * 220, 60 + r() * 220)
+    }
+  } else if (estilo === 1) {
+    // círculos y arcos
+    for (let i = 0; i < 6; i++) {
+      ctx.fillStyle = pal[i % pal.length]
+      ctx.globalAlpha = 0.85
+      ctx.beginPath()
+      ctx.arc(80 + r() * 350, 80 + r() * 350, 40 + r() * 140, r() * Math.PI, r() * Math.PI + Math.PI * (0.8 + r()))
+      ctx.fill()
+    }
+  } else {
+    // paisaje en bandas
+    let y = 0
+    for (let i = 0; i < 5; i++) {
+      const h = 60 + r() * 120
+      ctx.fillStyle = pal[i % pal.length]
+      ctx.beginPath()
+      ctx.moveTo(0, y + h)
+      for (let x = 0; x <= 512; x += 32) ctx.lineTo(x, y + h - Math.sin(x / 80 + r() * 2) * 25)
+      ctx.lineTo(512, 512); ctx.lineTo(0, 512); ctx.closePath(); ctx.fill()
+      y += h * 0.7
+    }
+  }
+  ctx.globalAlpha = 1
+  const tex = new THREE.CanvasTexture(c)
+  tex.colorSpace = THREE.SRGBColorSpace
+  cacheArte.set(k, tex)
+  return tex
+}
+
+/** Foto subida por el admin (sin repetir). */
+export function texturaFoto(url: string): THREE.Texture {
+  const k = `foto|${url}`
+  const hit = cacheArte.get(k)
+  if (hit) return hit
+  const tex = new THREE.TextureLoader().load(url)
+  tex.colorSpace = THREE.SRGBColorSpace
+  cacheArte.set(k, tex)
+  return tex
+}

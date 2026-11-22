@@ -1,14 +1,15 @@
 'use client'
 import { useMemo } from 'react'
-import { AlertTriangle, Copy, ExternalLink, Lock, Plus, RotateCw, Save, Trash2, Undo2, Unlock, X } from 'lucide-react'
+import { AlertTriangle, Copy, ExternalLink, Lock, Plus, RotateCw, Save, Shuffle, Trash2, Undo2, Unlock, X } from 'lucide-react'
 import type { Columna, MatDef, TipoColumna, Ubicacion } from '@/lib/render/tipos'
 import { NOMBRE_ELECTRO, NOMBRE_PARED } from '@/lib/render/tipos'
-import { conflictos, largoPared } from '@/lib/render/escena'
+import { conflictos, largoPared, medidas } from '@/lib/render/escena'
 import { MATERIALES_PRESET, PRESETS_POR_GRUPO, preset } from '@/lib/render/materiales'
 import { formatPrice, cn } from '@/lib/utils'
 import { useRender, useSeleccionado } from './store'
 import { Boton, Fila, Interruptor, Numero, Seccion, Selector } from './ui'
-import { Muestra } from './PanelMateriales'
+import { Muestra, SubirTextura } from './PanelMateriales'
+import type { DefDeco, TipoDeco } from '@/lib/render/tipos'
 
 const TIPOS_COL: { valor: TipoColumna; texto: string }[] = [
   { valor: 'puerta', texto: 'Puerta' },
@@ -69,7 +70,7 @@ export default function PanelSeleccion() {
   const producto = it.productoId ? catalogo.find(p => p.id === it.productoId) : undefined
   const mod = it.modulo
   const L = it.ubicacion === 'libre' ? 0 : largoPared(esc, it.ubicacion)
-  const ancho = mod?.ancho ?? it.electro!.ancho
+  const ancho = medidas(it).ancho
   const ubicaciones: { valor: Ubicacion; texto: string }[] = (['fondo', 'izq', 'der', 'frente'] as const)
     .filter(p => esc.ambiente.paredes[p]).map(p => ({ valor: p, texto: NOMBRE_PARED[p] }))
   ubicaciones.push({ valor: 'libre', texto: NOMBRE_PARED.libre })
@@ -97,7 +98,7 @@ export default function PanelSeleccion() {
       <div className="flex items-start justify-between gap-2 border-b border-gray-100 px-4 py-3">
         <div className="min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-rojo-principal">
-            {it.origen === 'producto' ? 'Producto del catálogo' : it.origen === 'electro' ? NOMBRE_ELECTRO[it.electro!.tipo] : 'Módulo a medida'}
+            {it.origen === 'producto' ? 'Producto del catálogo' : it.origen === 'electro' ? NOMBRE_ELECTRO[it.electro!.tipo] : it.origen === 'deco' ? 'Decoración' : 'Módulo a medida'}
           </p>
           {it.origen === 'producto'
             ? <h2 className="font-bold leading-tight text-gris-oscuro">{it.nombre}</h2>
@@ -143,6 +144,8 @@ export default function PanelSeleccion() {
             <Fila etiqueta="Alto"><Numero valor={mod.alto} min={10} max={300} onCambio={v => actualizar(it.id, x => { x.modulo!.alto = v })} /></Fila>
             <Fila etiqueta="Profundidad"><Numero valor={mod.profundidad} min={10} max={120} onCambio={v => actualizar(it.id, x => { x.modulo!.profundidad = v })} /></Fila>
           </>
+        ) : it.deco ? (
+          <EditorDeco />
         ) : (
           <>
             <Fila etiqueta="Ancho"><Numero valor={it.electro!.ancho} min={10} max={200} onCambio={v => actualizar(it.id, x => { x.electro!.ancho = v })} /></Fila>
@@ -211,6 +214,54 @@ export default function PanelSeleccion() {
       )}
       {lista.length > 0 && <div className="px-4"><Conflictos lista={lista} /></div>}
     </div>
+  )
+}
+
+const COLORES_DECO: Partial<Record<TipoDeco, [string, string | null]>> = {
+  planta: ['Maceta', 'Follaje'], aromaticas: ['Macetas', 'Follaje'], cuadro: ['Marco', 'Fondo'], espejo: ['Marco', null],
+  reloj: ['Marco', 'Esfera'], estante: ['Madera', 'Libro'], 'mesa-rect': ['Patas', 'Tapa'], 'mesa-redonda': ['Pie', 'Tapa'],
+  silla: ['Estructura', 'Asiento'], banqueta: ['Estructura', 'Asiento'], alfombra: ['Borde', 'Centro'], colgante: ['Pantalla', 'Luz'],
+  jarron: ['Jarrón', 'Flores'], frutero: ['Bowl', null], libros: ['Libro 1', 'Libro 2'], tabla: ['Madera', null], cafetera: ['Color', null],
+}
+const CON_DISENO: TipoDeco[] = ['planta', 'cuadro', 'estante', 'libros', 'jarron', 'frutero']
+
+/** Medidas, colores y diseño de un objeto de decoración. */
+function EditorDeco() {
+  const it = useSeleccionado()!
+  const actualizar = useRender(s => s.actualizarItem)
+  const d = it.deco!
+  const set = (c: Partial<DefDeco>) => actualizar(it.id, x => { Object.assign(x.deco!, c) })
+  const [c1, c2] = COLORES_DECO[d.tipo] ?? ['Color', null]
+  return (
+    <>
+      <Fila etiqueta="Ancho"><Numero valor={d.ancho} min={2} max={400} onCambio={v => set({ ancho: v })} /></Fila>
+      {d.tipo !== 'alfombra' && <Fila etiqueta="Alto"><Numero valor={d.alto} min={1} max={300} onCambio={v => set({ alto: v })} /></Fila>}
+      <Fila etiqueta={d.tipo === 'alfombra' ? 'Largo' : 'Profundidad'}><Numero valor={d.profundidad} min={1} max={400} onCambio={v => set({ profundidad: v })} /></Fila>
+      {it.ubicacion !== 'libre' && (
+        <Fila etiqueta="Separación de la pared"><Numero valor={it.separacion ?? 0} min={0} max={80} onCambio={v => actualizar(it.id, x => { x.separacion = v })} /></Fila>
+      )}
+      <Fila etiqueta={c1}>
+        <input type="color" value={d.color} onChange={e => set({ color: e.target.value })} className="h-7 w-12 cursor-pointer rounded border border-gray-200" />
+      </Fila>
+      {c2 && (
+        <Fila etiqueta={c2}>
+          <input type="color" value={d.color2} onChange={e => set({ color2: e.target.value })} className="h-7 w-12 cursor-pointer rounded border border-gray-200" />
+        </Fila>
+      )}
+      <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+        {CON_DISENO.includes(d.tipo) && !d.imagen && (
+          <Boton onClick={() => set({ variante: d.tipo === 'planta' ? [2, 3, 4, 5, 6][(([2, 3, 4, 5, 6].indexOf(d.variante) + 1) % 5)] : d.variante + 1 })}>
+            <Shuffle className="h-4 w-4" /> Otro diseño
+          </Boton>
+        )}
+        {d.tipo === 'cuadro' && (
+          <span className="flex items-center gap-3">
+            <SubirTextura onListo={url => set({ imagen: url })} />
+            {d.imagen && <button type="button" className="text-xs text-gris-medio hover:underline" onClick={() => set({ imagen: undefined })}>Quitar foto</button>}
+          </span>
+        )}
+      </div>
+    </>
   )
 }
 

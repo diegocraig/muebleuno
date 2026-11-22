@@ -22,7 +22,7 @@ export function Muestra({ def, activo, onClick, tam = 'h-8 w-8' }: { def: MatDef
   )
 }
 
-function SubirTextura({ onListo }: { onListo: (url: string) => void }) {
+export function SubirTextura({ onListo }: { onListo: (url: string) => void }) {
   const input = useRef<HTMLInputElement>(null)
   const [subiendo, setSubiendo] = useState(false)
   const avisar = useRender(s => s.avisar)

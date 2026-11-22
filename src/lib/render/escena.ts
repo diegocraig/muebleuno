@@ -77,6 +77,7 @@ export interface Medidas { ancho: number; alto: number; prof: number }
 
 export function medidas(it: Item): Medidas {
   if (it.modulo) return { ancho: it.modulo.ancho, alto: it.modulo.alto, prof: it.modulo.profundidad }
+  if (it.deco) return { ancho: it.deco.ancho, alto: it.deco.alto, prof: it.deco.profundidad }
   const e = it.electro!
   return { ancho: e.ancho, alto: e.alto, prof: e.profundidad }
 }
@@ -84,7 +85,7 @@ export function medidas(it: Item): Medidas {
 export const esEsquinero = (it: Item) => !!it.modulo?.tipo.startsWith('esquinero')
 
 /** Nivel "lógico": define a qué altura va por defecto y con qué choca. */
-export type Nivel = 'bajo' | 'alto' | 'piso' | 'mesada' | 'colgante'
+export type Nivel = 'bajo' | 'alto' | 'piso' | 'mesada' | 'colgante' | 'deco'
 
 export function nivel(it: Item): Nivel {
   if (it.modulo) {
@@ -93,6 +94,7 @@ export function nivel(it: Item): Nivel {
     if (t === 'alto') return 'piso'
     return 'alto'
   }
+  if (it.deco) return 'deco'
   switch (it.electro!.tipo) {
     case 'anafe': case 'bacha': return 'mesada'
     case 'campana': case 'microondas': return 'colgante'
@@ -144,7 +146,8 @@ export interface Caja { x0: number; x1: number; z0: number; z1: number; y0: numb
 
 /** Centro en planta + rotación (grados) de un ítem; la profundidad mira hacia +z local. */
 export function transformar(it: Item, esc: Escena): { cx: number; cz: number; rot: number } {
-  const { ancho, prof } = medidas(it)
+  const { ancho, prof: p } = medidas(it)
+  const prof = p + 2 * (it.separacion ?? 0) // el centro se corre `separacion` desde la pared
   const W = esc.ambiente.ancho, D = esc.ambiente.largo
   const s = it.s
   switch (it.ubicacion) {
@@ -185,6 +188,8 @@ function solapan(a: Caja, b: Caja) {
 
 /** Pares que no deberían chocar entre sí (empotrables sobre/bajo mesada, campana sobre anafe...). */
 function ignorarChoque(a: Item, b: Item) {
+  // La decoración se apoya sobre / al lado de cualquier cosa: no se valida.
+  if (a.deco || b.deco) return true
   if (a.grupo && a.grupo === b.grupo) return false
   const na = nivel(a), nb = nivel(b)
   const empotra = (x: Item) => x.electro && (x.electro.empotrable || ['anafe', 'bacha', 'horno'].includes(x.electro.tipo))
@@ -210,7 +215,7 @@ export function conflictos(esc: Escena): Conflicto[] {
       if (solapan(c, cajas[j])) out.push({ a: it.id, b: o.id, texto: `${it.nombre} choca con ${o.nombre}` })
     }
     // Aberturas: un mueble no puede tapar una puerta; sí puede ir bajo una ventana.
-    if (it.ubicacion !== 'libre') {
+    if (it.ubicacion !== 'libre' && !it.deco) {
       for (const ab of esc.ambiente.aberturas) {
         if (ab.pared !== it.ubicacion) continue
         const { ancho } = medidas(it)
@@ -391,7 +396,7 @@ export interface LineaPresupuesto {
   cantidad: number
   precio: number
   subtotal: number
-  tipo: 'producto' | 'electro' | 'generico'
+  tipo: 'producto' | 'electro' | 'generico' | 'deco'
   incluido: boolean
 }
 

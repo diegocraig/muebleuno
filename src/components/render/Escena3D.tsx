@@ -13,6 +13,7 @@ import Habitacion from './Habitacion'
 import Luces from './Luces'
 import Mueble3D from './Mueble3D'
 import Electro3D from './Electro3D'
+import Deco3D from './Deco3D'
 
 // ─── Captura de imagen (la usa la barra de herramientas) ────────────────────
 
@@ -95,13 +96,13 @@ function Camaras() {
 
 /** Plano sobre el que se arrastra un ítem (paralelo a su pared, o el piso). */
 function planoArrastre(it: Item, W: number, D: number): THREE.Plane {
-  const p = medidas(it).prof * M
+  const p = (medidas(it).prof + (it.separacion ?? 0)) * M
   switch (it.ubicacion) {
     case 'fondo': return new THREE.Plane(new THREE.Vector3(0, 0, 1), -p)
     case 'frente': return new THREE.Plane(new THREE.Vector3(0, 0, -1), D - p)
     case 'izq': return new THREE.Plane(new THREE.Vector3(1, 0, 0), -p)
     case 'der': return new THREE.Plane(new THREE.Vector3(-1, 0, 0), W - p)
-    default: return new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
+    default: return new THREE.Plane(new THREE.Vector3(0, 1, 0), -it.elevacion * M)
   }
 }
 
@@ -162,7 +163,7 @@ function ItemNodo({ it, seleccionado, conflicto }: { it: Item; seleccionado: boo
   return (
     <group position={[cx * M, it.elevacion * M, cz * M]} rotation={[0, (rot * Math.PI) / 180, 0]}>
       <group onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}>
-        {it.modulo ? <Mueble3D it={it} /> : <Electro3D it={it} />}
+        {it.modulo ? <Mueble3D it={it} /> : it.deco ? <Deco3D it={it} /> : <Electro3D it={it} />}
       </group>
       {(seleccionado || conflicto) && !esq && (
         <lineSegments geometry={borde} position={[0, (alto * M) / 2, 0]}>
@@ -212,7 +213,7 @@ function Cotas() {
     const { ancho, alto, prof } = medidas(sel)
     const h = huecos(esc, sel)
     const y = (sel.elevacion + alto) * M + 0.08
-    const dz = prof + 4
+    const dz = prof + (sel.separacion ?? 0) + 4
     const u = sel.ubicacion
     const a = puntoPared(u, sel.s, dz, y, W, D), b = puntoPared(u, sel.s + ancho, dz, y, W, D)
     const L = largoPared(esc, u)

@@ -116,6 +116,24 @@ export interface ProductoCatalogo {
   ajustado: boolean       // tiene override guardado en RenderModulo
 }
 
+// ─── Decoración ─────────────────────────────────────────────────────────────
+
+export type TipoDeco =
+  | 'planta' | 'aromaticas' | 'cuadro' | 'espejo' | 'reloj' | 'estante'
+  | 'mesa-rect' | 'mesa-redonda' | 'silla' | 'banqueta' | 'alfombra' | 'colgante'
+  | 'jarron' | 'frutero' | 'libros' | 'tabla' | 'cafetera'
+
+export interface DefDeco {
+  tipo: TipoDeco
+  ancho: number
+  alto: number
+  profundidad: number
+  color: string        // color principal (maceta, marco, silla, alfombra…)
+  color2: string       // secundario (madera de la mesa, fondo del cuadro…)
+  variante: number     // semilla: diseño del cuadro, forma de la planta…
+  imagen?: string      // foto propia (cuadros)
+}
+
 // ─── Materiales ─────────────────────────────────────────────────────────────
 
 export type TexturaId =
@@ -165,7 +183,7 @@ export interface Abertura {
 
 export interface Item {
   id: string
-  origen: 'producto' | 'electro' | 'generico'
+  origen: 'producto' | 'electro' | 'generico' | 'deco'
   productoId?: number
   electroId?: number
   nombre: string
@@ -176,6 +194,9 @@ export interface Item {
   cuentaEnPresupuesto: boolean
   modulo?: DefModulo
   electro?: DefElectro
+  deco?: DefDeco
+  /** Distancia del fondo del objeto a la pared (cm); para adornos y deco. */
+  separacion?: number
   ubicacion: Ubicacion
   s: number          // cm a lo largo de la pared (borde izquierdo del mueble)
   x?: number         // libre: centro en planta (cm)

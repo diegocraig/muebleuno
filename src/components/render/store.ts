@@ -5,9 +5,10 @@ import type {
 } from '@/lib/render/tipos'
 import {
   caja, combinarAnchos, elevacionPorDefecto, esquinaPorDefecto, escenaInicial, imantar, largoPared, medidas, PRESUPUESTO_DEFAULT,
-  primerHueco, productoPorAncho, transformar, uid,
+  primerHueco, productoPorAncho, topeMesada, transformar, uid,
 } from '@/lib/render/escena'
 import { preset } from '@/lib/render/materiales'
+import type { PresetDeco } from '@/lib/render/deco'
 
 export type Camara = 'perspectiva' | 'planta' | 'frente'
 export type Panel = 'seleccion' | 'ambiente' | 'materiales' | 'luz' | 'presupuesto'
@@ -61,6 +62,7 @@ interface Estado {
   agregarProducto: (p: ProductoCatalogo) => void
   agregarElectro: (e: ElectroCatalogo) => void
   agregarGenerico: (tipo: 'bajo' | 'alacena' | 'alto') => void
+  agregarDeco: (p: PresetDeco) => void
   moverItem: (id: string, s: number, imanes?: boolean) => void
   moverLibre: (id: string, x: number, z: number) => void
   cambiarUbicacion: (id: string, u: Ubicacion) => void
@@ -238,6 +240,115 @@ export const useRender = create<Estado>((set, get) => ({
     })
   },
 
+  agregarDeco: p => {
+    const { paredDestino, seleccion } = get()
+    get().mutar(esc => {
+      const W = esc.ambiente.ancho, D = esc.ambiente.largo
+      const pared: Pared = paredDestino !== 'libre' && esc.ambiente.paredes[paredDestino]
+        ? paredDestino
+        : (['fondo', 'izq', 'der', 'frente'] as Pared[]).find(x => esc.ambiente.paredes[x]) ?? 'fondo'
+      const base: Item = {
+        id: uid(), origen: 'deco', nombre: p.nombre, precio: 0, cuentaEnPresupuesto: false,
+        deco: structuredClone(p.def), ubicacion: 'libre', s: 0, elevacion: p.elevacion ?? 0,
+      }
+      let it: Item
+      const mesa = esc.items.find(i => i.deco && (i.deco.tipo === 'mesa-rect' || i.deco.tipo === 'mesa-redonda'))
+      const centro = { x: Math.round(W / 2), z: Math.round(Math.min(D - 80, D / 2 + 30)) }
+      if (p.modo === 'piso') {
+        const t = p.def.tipo
+        let pos = { ...centro }
+        if ((t === 'alfombra' || t === 'colgante') && mesa) pos = { x: mesa.x ?? centro.x, z: mesa.z ?? centro.z }
+        else if (t === 'planta') {
+          // Primera esquina libre (empezando por las del frente, que suelen quedar vacías).
+          const r = p.def.ancho / 2 + 8
+          const esquinas = [{ x: r, z: D - r }, { x: W - r, z: D - r }, { x: r, z: r }, { x: W - r, z: r }]
+          const libre = esquinas.find(e => !esc.items.some(o => {
+            if (o.deco?.tipo === 'alfombra' || o.deco?.tipo === 'colgante') return false
+            const c = caja(o, esc)
+            return e.x + r > c.x0 && e.x - r < c.x1 && e.z + r > c.z0 && e.z - r < c.z1
+          }))
+          pos = libre ?? { x: centro.x + 60, z: centro.z }
+        } else if (t !== 'mesa-rect' && t !== 'mesa-redonda' && t !== 'alfombra') {
+          const n = esc.items.filter(i => i.deco && i.ubicacion === 'libre').length
+          pos = { x: centro.x + ((n % 4) - 1.5) * 30, z: centro.z + 70 }
+        }
+        it = { ...base, x: Math.round(pos.x), z: Math.round(pos.z), rot: 0 }
+      } else if (p.modo === 'pared') {
+        // Primer tramo de pared libre a esa altura (muebles, aberturas y otros cuadros),
+        // probando primero la pared elegida.
+        const y0 = base.elevacion, y1 = base.elevacion + p.def.alto
+        const w = p.def.ancho
+        const orden = [pared, ...(['fondo', 'izq', 'der', 'frente'] as Pared[]).filter(x => x !== pared && esc.ambiente.paredes[x])]
+        let destino: { u: Pared; s: number } | null = null
+        for (const u of orden) {
+          const L = largoPared(esc, u)
+          const occ: [number, number][] = []
+          for (const o of esc.items) {
+            if (o.ubicacion !== u) continue
+            if (o.deco && (o.deco.tipo !== 'cuadro' && o.deco.tipo !== 'espejo' && o.deco.tipo !== 'reloj' && o.deco.tipo !== 'estante')) continue
+            const c = caja(o, esc)
+            if (c.y0 < y1 && y0 < c.y1) occ.push([o.s, o.s + medidas(o).ancho])
+          }
+          for (const ab of esc.ambiente.aberturas) if (ab.pared === u && ab.elevacion < y1 && y0 < ab.elevacion + ab.alto) occ.push([ab.s, ab.s + ab.ancho])
+          // Esquinas: muebles de las paredes vecinas que llegan hasta esta.
+          for (const o of esc.items) {
+            if (o.ubicacion === u || o.ubicacion === 'libre' || o.deco) continue
+            const c = caja(o, esc)
+            if (!(c.y0 < y1 && y0 < c.y1)) continue
+            if ((u === 'fondo' && c.z0 < 5) || (u === 'frente' && c.z1 > D - 5)) occ.push([c.x0, c.x1])
+            if ((u === 'izq' && c.x0 < 5) || (u === 'der' && c.x1 > W - 5)) occ.push([c.z0, c.z1])
+          }
+          occ.sort((a, b) => a[0] - b[0])
+          let cursor = 0, mejor: [number, number] | null = null
+          for (const [a, b] of [...occ, [L, L] as [number, number]]) {
+            if (a - cursor >= w + 20 && (!mejor || a - cursor > mejor[1] - mejor[0])) mejor = [cursor, a]
+            cursor = Math.max(cursor, b)
+          }
+          if (mejor) { destino = { u, s: (mejor[0] + mejor[1] - w) / 2 }; break }
+        }
+        it = destino
+          ? { ...base, ubicacion: destino.u, s: Math.round(destino.s) }
+          : { ...base, ubicacion: pared, s: Math.max(0, (largoPared(esc, pared) - w) / 2) }
+        if (!destino) setTimeout(() => get().avisar('No queda pared libre a esa altura: lo dejé en el centro, movelo o cambiá su altura'), 0)
+      } else {
+        // Sobre la mesada: primer lugar libre sobre los bajos de la pared
+        // (empezando por el bajo seleccionado), sin pisar anafes, bachas ni otros adornos.
+        const sel = esc.items.find(i => i.id === seleccion && i.modulo?.tipo === 'bajo' && i.ubicacion !== 'libre')
+        const u = (sel?.ubicacion ?? pared) as Pared
+        const bajos = esc.items.filter(i => i.ubicacion === u && i.modulo?.tipo === 'bajo').sort((a, b) => a.s - b.s)
+        if (sel) bajos.sort((a, b) => (a.id === sel.id ? -1 : b.id === sel.id ? 1 : 0))
+        const ocupado = esc.items
+          .filter(o => o.ubicacion === u && ((o.deco && o.elevacion >= topeMesada(esc.estandares) - 1) || o.electro?.tipo === 'anafe' || o.electro?.tipo === 'bacha'))
+          .map(o => [o.s - 3, o.s + medidas(o).ancho + 3] as [number, number])
+        const w = p.def.ancho
+        let s: number | null = null
+        for (const b of bajos) {
+          const fin = b.s + medidas(b).ancho - w
+          for (let x = b.s + 5; x <= fin - 5 + 0.01; x += 5) {
+            if (!ocupado.some(([a, z]) => x < z && x + w > a)) { s = x; break }
+          }
+          if (s !== null) break
+        }
+        if (s === null) s = bajos[0] ? bajos[0].s + (medidas(bajos[0]).ancho - w) / 2 : (largoPared(esc, u) - w) / 2
+        it = { ...base, ubicacion: u, s: Math.max(0, s), elevacion: topeMesada(esc.estandares), separacion: p.separacion ?? 10 }
+      }
+      if (p.juego) {
+        const grupo = uid()
+        it.grupo = grupo
+        esc.items.push(it)
+        for (const j of p.juego) {
+          esc.items.push({
+            ...base, id: uid(), grupo, nombre: 'Silla', deco: structuredClone(j.def),
+            x: (it.x ?? 0) + j.dx, z: (it.z ?? 0) + j.dz, rot: j.rot,
+          })
+        }
+      } else {
+        esc.items.push(it)
+      }
+      set({ seleccion: it.id, panel: 'seleccion' })
+    })
+  },
+
   moverItem: (id, s, imanes = true) => {
     get().mutar(esc => {
       const it = esc.items.find(i => i.id === id)
@@ -278,7 +389,7 @@ export const useRender = create<Estado>((set, get) => ({
     get().mutar(esc => {
       const it = esc.items.find(i => i.id === id)
       if (!it) return
-      const copia: Item = { ...structuredClone(it), id: uid(), grupo: undefined, cuentaEnPresupuesto: it.origen !== 'producto' || it.precio > 0 ? true : it.cuentaEnPresupuesto }
+      const copia: Item = { ...structuredClone(it), id: uid(), grupo: undefined, cuentaEnPresupuesto: it.origen === 'deco' ? it.cuentaEnPresupuesto : it.origen !== 'producto' || it.precio > 0 ? true : it.cuentaEnPresupuesto }
       if (copia.origen === 'producto' && copia.precio === 0) {
         // Parte de un combo duplicada suelta: no tiene precio propio.
         copia.cuentaEnPresupuesto = false

@@ -1,6 +1,8 @@
 'use client'
 import { useMemo, useState } from 'react'
-import { BadgeCheck, Box, Plus, Search, Sparkles, Wand2 } from 'lucide-react'
+import { Apple, Armchair, BadgeCheck, BookOpen, Box, Circle, Clock, Coffee, Flower2, Frame, Lamp, LampCeiling, Leaf, Library, Plus, RectangleHorizontal, Search, Sparkles, Sprout, Utensils, Wand2, Wine } from 'lucide-react'
+import { NOMBRE_CATEGORIA_DECO, PRESETS_DECO, type CategoriaDeco } from '@/lib/render/deco'
+import type { TipoDeco } from '@/lib/render/tipos'
 import type { Pared, ProductoCatalogo, TipoElectro, Ubicacion } from '@/lib/render/tipos'
 import { NOMBRE_ELECTRO, NOMBRE_PARED } from '@/lib/render/tipos'
 import { formatPrice, cn } from '@/lib/utils'
@@ -146,8 +148,43 @@ function AMedida() {
   )
 }
 
+const ICONO_DECO: Record<TipoDeco, React.ReactNode> = {
+  planta: <Flower2 className="h-5 w-5" />, aromaticas: <Sprout className="h-5 w-5" />, cuadro: <Frame className="h-5 w-5" />,
+  espejo: <RectangleHorizontal className="h-5 w-5" />, reloj: <Clock className="h-5 w-5" />, estante: <Library className="h-5 w-5" />,
+  'mesa-rect': <Utensils className="h-5 w-5" />, 'mesa-redonda': <Circle className="h-5 w-5" />, silla: <Armchair className="h-5 w-5" />,
+  banqueta: <Armchair className="h-5 w-5" />, alfombra: <RectangleHorizontal className="h-5 w-5" />, colgante: <LampCeiling className="h-5 w-5" />,
+  jarron: <Wine className="h-5 w-5" />, frutero: <Apple className="h-5 w-5" />, libros: <BookOpen className="h-5 w-5" />,
+  tabla: <Leaf className="h-5 w-5" />, cafetera: <Coffee className="h-5 w-5" />,
+}
+
+const AYUDA_MODO = { piso: 'Va al piso, en el centro del ambiente', pared: 'Se cuelga en la pared elegida arriba', mesada: 'Se apoya sobre la mesada (sobre el bajo seleccionado si hay uno)' }
+
+function Deco() {
+  const agregar = useRender(s => s.agregarDeco)
+  const categorias = Object.keys(NOMBRE_CATEGORIA_DECO) as CategoriaDeco[]
+  return (
+    <div className="flex-1 overflow-y-auto px-3 pb-3">
+      {categorias.map(c => (
+        <div key={c} className="pt-3">
+          <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-gris-medio">{NOMBRE_CATEGORIA_DECO[c]}</p>
+          <div className="grid grid-cols-2 gap-1.5">
+            {PRESETS_DECO.filter(p => p.categoria === c).map(p => (
+              <button key={p.id} type="button" onClick={() => agregar(p)} title={AYUDA_MODO[p.modo]}
+                className="group flex flex-col items-center gap-1 rounded-lg border border-gray-100 bg-white px-2 py-2.5 text-center hover:border-rojo-principal">
+                <span className="text-gris-medio group-hover:text-rojo-principal">{ICONO_DECO[p.def.tipo]}</span>
+                <span className="text-[12px] font-semibold leading-tight text-gris-oscuro">{p.nombre}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+      <p className="pt-3 text-[11px] text-gris-claro">La decoración no suma al presupuesto (se puede activar en cada objeto). Los cuadros aceptan una foto propia.</p>
+    </div>
+  )
+}
+
 export default function PanelCatalogo() {
-  const [tab, setTab] = useState<'muebles' | 'electros' | 'medida'>('muebles')
+  const [tab, setTab] = useState<'muebles' | 'electros' | 'deco' | 'medida'>('muebles')
   const destino = useRender(s => s.paredDestino)
   const setDestino = useRender(s => s.setParedDestino)
   const paredes = useRender(s => s.escena.ambiente.paredes)
@@ -175,11 +212,13 @@ export default function PanelCatalogo() {
         opciones={[
           { valor: 'muebles', texto: 'Muebles', icono: <Box className="h-4 w-4" /> },
           { valor: 'electros', texto: 'Electros', icono: <Sparkles className="h-4 w-4" /> },
+          { valor: 'deco', texto: 'Deco', icono: <Lamp className="h-4 w-4" /> },
           { valor: 'medida', texto: 'A medida', icono: <Plus className="h-4 w-4" /> },
         ]}
       />
       {tab === 'muebles' && <Muebles />}
       {tab === 'electros' && <Electros />}
+      {tab === 'deco' && <Deco />}
       {tab === 'medida' && <AMedida />}
     </div>
   )
