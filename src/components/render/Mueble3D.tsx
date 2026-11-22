@@ -60,10 +60,27 @@ function Perfil({ x, y, w, mat }: { x: number; y: number; w: number; mat: THREE.
 
 // ─── Hojas animadas ─────────────────────────────────────────────────────────
 
+/**
+ * Estado de apertura animado (0 cerrado → 1 abierto). `avanzar` se llama en cada
+ * cuadro y devuelve true mientras siga animando.
+ */
 function useApertura() {
   const abierta = useRender(s => s.vista.puertasAbiertas)
   const v = useRef(0)
-  return { abierta, v }
+  const animando = useRef(false)
+  const avanzar = (dt: number, velocidad: number) => {
+    const obj = abierta ? 1 : 0
+    if (v.current === obj) { animando.current = false; return false }
+    // Con el render a demanda, el primer cuadro trae todo el tiempo que estuvo quieto:
+    // se toma un paso normal. Después se usa el tiempo real (acotado), así en equipos
+    // lentos la animación tarda lo mismo aunque dibuje menos cuadros.
+    const paso = animando.current ? Math.min(dt, 0.25) : 1 / 60
+    animando.current = true
+    v.current += (obj - v.current) * Math.min(1, paso * velocidad)
+    if (Math.abs(v.current - obj) < 0.002) v.current = obj // termina exacto en la posición final
+    return true
+  }
+  return { abierta, v, avanzar }
 }
 
 /** Puerta con bisagra a un costado (o arriba si es rebatible). Coordenadas: rectángulo [x0,x1]×[y0,y1] en el plano del frente. */
@@ -72,7 +89,7 @@ function Hoja({ x0, x1, y0, y1, bisagra, ctx, vidrio = false, tiradorEn, sinTira
   ctx: Ctx; vidrio?: boolean; tiradorEn: 'arriba' | 'abajo' | 'medio'; sinTirador?: boolean
 }) {
   const grupo = useRef<THREE.Group>(null)
-  const { abierta, v } = useApertura()
+  const { v, avanzar } = useApertura()
   const girar = () => {
     if (!grupo.current) return
     grupo.current.rotation.set(
@@ -85,12 +102,9 @@ function Hoja({ x0, x1, y0, y1, bisagra, ctx, vidrio = false, tiradorEn, sinTira
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useLayoutEffect(girar, [bisagra])
   useFrame((estado, dt) => {
-    const obj = abierta ? 1 : 0
-    if (Math.abs(v.current - obj) < 0.001) return
-    // dt acotado: con el render a demanda, el primer cuadro trae el tiempo que estuvo quieto.
-    v.current += (obj - v.current) * Math.min(1, Math.min(dt, 0.05) * 6)
-    estado.invalidate()
+    if (!avanzar(dt, 7)) return
     girar()
+    estado.invalidate()
   })
   const w = x1 - x0 - LUZ, h = y1 - y0 - LUZ
   // El grupo pivota en la bisagra; la hoja se dibuja desplazada desde ahí.
@@ -129,13 +143,11 @@ function Hoja({ x0, x1, y0, y1, bisagra, ctx, vidrio = false, tiradorEn, sinTira
 /** Cajón que sale hacia adelante al "abrir". */
 function Cajon({ x0, x1, y0, y1, prof, ctx, indice }: { x0: number; x1: number; y0: number; y1: number; prof: number; ctx: Ctx; indice: number }) {
   const grupo = useRef<THREE.Group>(null)
-  const { abierta, v } = useApertura()
+  const { v, avanzar } = useApertura()
   useFrame((estado, dt) => {
-    const obj = abierta ? 1 : 0
-    if (Math.abs(v.current - obj) < 0.001) return
-    v.current += (obj - v.current) * Math.min(1, Math.min(dt, 0.05) * Math.max(2, 6 - indice))
-    estado.invalidate()
+    if (!avanzar(dt, Math.max(3, 7 - indice))) return
     if (grupo.current) grupo.current.position.z = v.current * prof * 0.55
+    estado.invalidate()
   })
   const w = x1 - x0 - LUZ, h = y1 - y0 - LUZ
   const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2

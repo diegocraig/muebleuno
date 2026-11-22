@@ -25,6 +25,13 @@ export const capturador: { fn: ((escala?: number, tipo?: 'png' | 'jpeg', calidad
  */
 function Refrescar() {
   const invalidate = useThree(s => s.invalidate)
+  // Suscripción a todo el estado: este componente se vuelve a renderizar junto con
+  // el resto de la escena, y el efecto de abajo corre DESPUÉS de ese commit. Así el
+  // cuadro se pide cuando las puertas, las luces o la exposición ya recibieron el
+  // valor nuevo (pedirlo solo al cambiar el store llega antes que el commit de la
+  // escena, y la animación de puertas no arrancaba).
+  useRender()
+  useEffect(() => { invalidate() })
   useEffect(() => {
     alCargarTextura.fn = () => invalidate()
     const baja = useRender.subscribe(() => invalidate())
