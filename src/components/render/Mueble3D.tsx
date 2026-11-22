@@ -1,5 +1,5 @@
 'use client'
-import { useMemo, useRef } from 'react'
+import { useLayoutEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { Columna, EstiloTirador, Item, MatDef } from '@/lib/render/tipos'
@@ -73,13 +73,24 @@ function Hoja({ x0, x1, y0, y1, bisagra, ctx, vidrio = false, tiradorEn, sinTira
 }) {
   const grupo = useRef<THREE.Group>(null)
   const { abierta, v } = useApertura()
-  useFrame((_, dt) => {
+  const girar = () => {
+    if (!grupo.current) return
+    grupo.current.rotation.set(
+      bisagra === 'arriba' ? -v.current * 1.35 : 0,
+      bisagra === 'arriba' ? 0 : (bisagra === 'izq' ? -1 : 1) * v.current * 1.75,
+      0,
+    )
+  }
+  // Si cambia el lado de la bisagra con la puerta abierta, se recalcula el giro al instante.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useLayoutEffect(girar, [bisagra])
+  useFrame((estado, dt) => {
     const obj = abierta ? 1 : 0
     if (Math.abs(v.current - obj) < 0.001) return
-    v.current += (obj - v.current) * Math.min(1, dt * 6)
-    if (!grupo.current) return
-    if (bisagra === 'arriba') grupo.current.rotation.x = -v.current * 1.35
-    else grupo.current.rotation.y = (bisagra === 'izq' ? -1 : 1) * v.current * 1.75
+    // dt acotado: con el render a demanda, el primer cuadro trae el tiempo que estuvo quieto.
+    v.current += (obj - v.current) * Math.min(1, Math.min(dt, 0.05) * 6)
+    estado.invalidate()
+    girar()
   })
   const w = x1 - x0 - LUZ, h = y1 - y0 - LUZ
   // El grupo pivota en la bisagra; la hoja se dibuja desplazada desde ahí.
@@ -119,10 +130,11 @@ function Hoja({ x0, x1, y0, y1, bisagra, ctx, vidrio = false, tiradorEn, sinTira
 function Cajon({ x0, x1, y0, y1, prof, ctx, indice }: { x0: number; x1: number; y0: number; y1: number; prof: number; ctx: Ctx; indice: number }) {
   const grupo = useRef<THREE.Group>(null)
   const { abierta, v } = useApertura()
-  useFrame((_, dt) => {
+  useFrame((estado, dt) => {
     const obj = abierta ? 1 : 0
     if (Math.abs(v.current - obj) < 0.001) return
-    v.current += (obj - v.current) * Math.min(1, dt * (6 - indice))
+    v.current += (obj - v.current) * Math.min(1, Math.min(dt, 0.05) * Math.max(2, 6 - indice))
+    estado.invalidate()
     if (grupo.current) grupo.current.position.z = v.current * prof * 0.55
   })
   const w = x1 - x0 - LUZ, h = y1 - y0 - LUZ
@@ -289,25 +301,26 @@ function Esquinero({ w, h, d, ctx, zc, esquina, mesada }: { w: number; h: number
 }
 
 export default function Mueble3D({ it }: { it: Item }) {
-  const esc = useRender(s => s.escena)
+  // Suscripciones puntuales: mover otro mueble no vuelve a dibujar este.
+  const materiales = useRender(s => s.escena.materiales)
+  const tir = useRender(s => s.escena.tirador)
+  const est = useRender(s => s.escena.estandares)
   const def = it.modulo!
-  const frenteDef: MatDef = it.frente ?? esc.materiales.frentes
-  const cuerpoDef: MatDef = it.cuerpo ?? esc.materiales.cuerpos
-  const tir = esc.tirador
+  const frenteDef: MatDef = it.frente ?? materiales.frentes
+  const cuerpoDef: MatDef = it.cuerpo ?? materiales.cuerpos
   const ctx: Ctx = useMemo(() => ({
     frente: material(frenteDef),
     cuerpo: material(cuerpoDef),
-    zocalo: material(esc.materiales.zocalo),
+    zocalo: material(materiales.zocalo),
     tirador: { estilo: tir.estilo, mat: matColor(tir.color, 0.3, tir.metalico) },
     tipo: def.tipo,
     elev: it.elevacion,
-  }), [frenteDef, cuerpoDef, esc.materiales.zocalo, tir, def.tipo, it.elevacion])
+  }), [frenteDef, cuerpoDef, materiales.zocalo, tir, def.tipo, it.elevacion])
 
   const w = def.ancho * M, h = def.alto * M, d = def.profundidad * M
-  const conZocalo = def.tipo === 'bajo' || def.tipo === 'esquinero-bajo' || def.tipo === 'alto' ? esc.estandares.zocalo * M : 0
-  const est = esc.estandares
+  const conZocalo = def.tipo === 'bajo' || def.tipo === 'esquinero-bajo' || def.tipo === 'alto' ? est.zocalo * M : 0
   const llevaMesadaPropia = (def.tipo === 'esquinero-bajo' || (it.ubicacion === 'libre' && def.tipo === 'bajo')) && (est.mesadaActiva || def.conMesada)
-  const mesada = llevaMesadaPropia ? { mat: material(esc.materiales.mesada), esp: est.espesorMesada * M, prof: (it.ubicacion === 'libre' ? def.profundidad + 3 : est.profMesada) * M } : null
+  const mesada = llevaMesadaPropia ? { mat: material(materiales.mesada), esp: est.espesorMesada * M, prof: (it.ubicacion === 'libre' ? def.profundidad + 3 : est.profMesada) * M } : null
 
   if (def.tipo.startsWith('esquinero')) {
     return <Esquinero w={w} h={h} d={d} ctx={ctx} zc={conZocalo} esquina={it.esquina ?? 'izq'} mesada={mesada} />

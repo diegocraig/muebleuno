@@ -4,7 +4,7 @@ import type { Luces } from '@/lib/render/tipos'
 import { kelvinAHex } from '@/lib/render/materiales'
 import { cn } from '@/lib/utils'
 import { useRender } from './store'
-import { Boton, Deslizador, Fila, Interruptor, Seccion, Selector } from './ui'
+import { Boton, Color, Deslizador, Fila, Interruptor, Seccion, Selector } from './ui'
 
 type Preset = { id: string; nombre: string; icono: React.ReactNode; luces: Partial<Omit<Luces, 'sol' | 'techo' | 'led'>> & { sol?: Partial<Luces['sol']>; techo?: Partial<Luces['techo']>; led?: Partial<Luces['led']> } }
 
@@ -65,7 +65,7 @@ export default function PanelLuz() {
         <Fila etiqueta="Reflejos"><Deslizador valor={l.entorno} min={0} max={2} onCambio={v => set(x => { x.entorno = v })} formato={v => v.toFixed(2)} /></Fila>
         <Fila etiqueta="Sombras"><Interruptor valor={l.sombras} onCambio={v => set(x => { x.sombras = v }, true)} /></Fila>
         <Fila etiqueta="Fondo">
-          <input type="color" value={l.fondo} onChange={e => set(x => { x.fondo = e.target.value })} className="h-7 w-12 cursor-pointer rounded border border-gray-200" />
+          <Color valor={l.fondo} onCambio={v => set(x => { x.fondo = v })} />
         </Fila>
       </Seccion>
 

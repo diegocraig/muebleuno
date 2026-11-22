@@ -1,4 +1,5 @@
 import type { Escena } from './tipos'
+import { normalizarPresupuesto } from './escena'
 
 const MAX_DATOS = 2_000_000
 const MAX_CAPTURA = 900_000
@@ -12,7 +13,7 @@ export function validarProyecto(body: unknown) {
   if (!esc || esc.version !== 1 || !Array.isArray(esc.items)) return { error: 'La escena no es válida' } as const
   const datos = JSON.stringify(esc)
   if (datos.length > MAX_DATOS) return { error: 'La escena es demasiado grande' } as const
-  const presupuesto = JSON.stringify(b.presupuesto ?? {})
+  const presupuesto = JSON.stringify(normalizarPresupuesto(b.presupuesto))
   let captura: string | null = null
   if (typeof b.captura === 'string' && /^data:image\/(jpeg|png|webp);base64,/.test(b.captura)) {
     if (b.captura.length > MAX_CAPTURA) return { error: 'La captura es demasiado grande' } as const

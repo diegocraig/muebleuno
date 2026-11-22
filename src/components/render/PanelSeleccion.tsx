@@ -7,7 +7,8 @@ import { conflictos, largoPared, medidas } from '@/lib/render/escena'
 import { MATERIALES_PRESET, PRESETS_POR_GRUPO, preset } from '@/lib/render/materiales'
 import { formatPrice, cn } from '@/lib/utils'
 import { useRender, useSeleccionado } from './store'
-import { Boton, Fila, Interruptor, Numero, Seccion, Selector } from './ui'
+import { Boton, Color, Fila, Interruptor, Numero, Seccion, Selector } from './ui'
+import { deducirProducto } from '@/lib/render/medidas'
 import { Muestra, SubirTextura } from './PanelMateriales'
 import type { DefDeco, TipoDeco } from '@/lib/render/tipos'
 
@@ -89,8 +90,12 @@ export default function PanelSeleccion() {
   }
   const restaurarProducto = async () => {
     if (!it.productoId) return
-    await fetch(`/api/render/modulos/${it.productoId}`, { method: 'DELETE' })
-    avisar('Ajuste borrado: recargá la página para ver las medidas deducidas del nombre')
+    const r = await fetch(`/api/render/modulos/${it.productoId}`, { method: 'DELETE' })
+    if (!r.ok) { avisar('No se pudo borrar el ajuste', 'error'); return }
+    const deducido = deducirProducto(it.nombre).def
+    setCatalogo(catalogo.map(p => p.id === it.productoId ? { ...p, def: deducido ?? p.def, ajustado: false } : p))
+    if (deducido) actualizar(it.id, x => { x.modulo = { ...deducido } })
+    avisar('Listo: el producto volvió a las medidas deducidas de su nombre')
   }
 
   return (
@@ -102,7 +107,7 @@ export default function PanelSeleccion() {
           </p>
           {it.origen === 'producto'
             ? <h2 className="font-bold leading-tight text-gris-oscuro">{it.nombre}</h2>
-            : <input value={it.nombre} onChange={e => actualizar(it.id, x => { x.nombre = e.target.value })} className="w-full rounded border border-transparent font-bold text-gris-oscuro hover:border-gray-200 focus:border-rojo-principal focus:outline-none" />}
+            : <input value={it.nombre} onFocus={() => useRender.getState().marcarHistoria()} onChange={e => actualizar(it.id, x => { x.nombre = e.target.value }, false)} className="w-full rounded border border-transparent font-bold text-gris-oscuro hover:border-gray-200 focus:border-rojo-principal focus:outline-none" />}
           {producto && (
             <a href={`/productos/${producto.slug}`} target="_blank" className="mt-0.5 inline-flex items-center gap-1 text-xs text-gris-medio hover:text-rojo-principal">
               {formatPrice(producto.precio)} · ver ficha <ExternalLink className="h-3 w-3" />
@@ -122,10 +127,10 @@ export default function PanelSeleccion() {
           </Fila>
         ) : (
           <>
-            <Fila etiqueta="X (centro)"><Numero valor={it.x ?? 0} onCambio={v => actualizar(it.id, x => { x.x = v })} /></Fila>
-            <Fila etiqueta="Z (centro)"><Numero valor={it.z ?? 0} onCambio={v => actualizar(it.id, x => { x.z = v })} /></Fila>
+            <Fila etiqueta="X (centro)"><Numero valor={it.x ?? 0} onCambio={v => { useRender.getState().marcarHistoria(); useRender.getState().moverLibre(it.id, v, it.z ?? 0) }} /></Fila>
+            <Fila etiqueta="Z (centro)"><Numero valor={it.z ?? 0} onCambio={v => { useRender.getState().marcarHistoria(); useRender.getState().moverLibre(it.id, it.x ?? 0, v) }} /></Fila>
             <Fila etiqueta="Rotación">
-              <Boton variante="secundario" onClick={() => actualizar(it.id, x => { x.rot = ((x.rot ?? 0) + 90) % 360 })}><RotateCw className="h-4 w-4" /> {it.rot ?? 0}°</Boton>
+              <Boton variante="secundario" onClick={() => useRender.getState().rotarItem(it.id)}><RotateCw className="h-4 w-4" /> {it.rot ?? 0}°</Boton>
             </Fila>
           </>
         )}
@@ -155,6 +160,9 @@ export default function PanelSeleccion() {
               <Selector valor={it.electro!.acabado} opciones={[{ valor: 'inox', texto: 'Acero inox' }, { valor: 'blanco', texto: 'Blanco' }, { valor: 'negro', texto: 'Negro' }, { valor: 'gris', texto: 'Gris' }]} onCambio={v => actualizar(it.id, x => { x.electro!.acabado = v })} />
             </Fila>
             <Fila etiqueta="Empotrable / integrable"><Interruptor valor={it.electro!.empotrable} onCambio={v => actualizar(it.id, x => { x.electro!.empotrable = v })} /></Fila>
+            {it.ubicacion !== 'libre' && (
+              <Fila etiqueta="Separación de la pared"><Numero valor={it.separacion ?? 0} min={0} max={80} onCambio={v => actualizar(it.id, x => { x.separacion = v })} /></Fila>
+            )}
           </>
         )}
       </Seccion>
@@ -191,7 +199,9 @@ export default function PanelSeleccion() {
       )}
 
       <Seccion titulo="Presupuesto">
-        <Fila etiqueta="Cuenta en el presupuesto"><Interruptor valor={it.cuentaEnPresupuesto} onCambio={v => actualizar(it.id, x => { x.cuentaEnPresupuesto = v })} /></Fila>
+        {!(it.grupo && it.origen === 'producto' && it.precio === 0) && (
+          <Fila etiqueta="Cuenta en el presupuesto"><Interruptor valor={it.cuentaEnPresupuesto} onCambio={v => actualizar(it.id, x => { x.cuentaEnPresupuesto = v })} /></Fila>
+        )}
         {it.origen !== 'producto' && (
           <Fila etiqueta="Precio unitario"><Numero valor={it.precio} min={0} sufijo="$" ancho="w-28" onCambio={v => actualizar(it.id, x => { x.precio = v })} /></Fila>
         )}
@@ -203,7 +213,7 @@ export default function PanelSeleccion() {
         <Boton onClick={() => actualizar(it.id, x => { x.bloqueado = !x.bloqueado })}>{it.bloqueado ? <><Unlock className="h-4 w-4" /> Desbloquear</> : <><Lock className="h-4 w-4" /> Bloquear</>}</Boton>
         <Boton variante="peligro" onClick={() => borrar(it.id)}><Trash2 className="h-4 w-4" /> Borrar</Boton>
       </div>
-      {it.origen === 'producto' && mod && (
+      {it.origen === 'producto' && mod && !it.grupo && !producto?.combo && (
         <div className="mt-3 space-y-1 border-t border-gray-100 px-4 pt-3">
           <p className="text-xs text-gris-medio">Los cambios de medidas y frentes valen solo para este proyecto. Si el producto real es así, guardalo para todos:</p>
           <div className="flex flex-wrap gap-2">
@@ -230,7 +240,7 @@ function EditorDeco() {
   const it = useSeleccionado()!
   const actualizar = useRender(s => s.actualizarItem)
   const d = it.deco!
-  const set = (c: Partial<DefDeco>) => actualizar(it.id, x => { Object.assign(x.deco!, c) })
+  const set = (c: Partial<DefDeco>, historia = true) => actualizar(it.id, x => { Object.assign(x.deco!, c) }, historia)
   const [c1, c2] = COLORES_DECO[d.tipo] ?? ['Color', null]
   return (
     <>
@@ -241,11 +251,11 @@ function EditorDeco() {
         <Fila etiqueta="Separación de la pared"><Numero valor={it.separacion ?? 0} min={0} max={80} onCambio={v => actualizar(it.id, x => { x.separacion = v })} /></Fila>
       )}
       <Fila etiqueta={c1}>
-        <input type="color" value={d.color} onChange={e => set({ color: e.target.value })} className="h-7 w-12 cursor-pointer rounded border border-gray-200" />
+        <Color valor={d.color} onCambio={v => set({ color: v }, false)} />
       </Fila>
       {c2 && (
         <Fila etiqueta={c2}>
-          <input type="color" value={d.color2} onChange={e => set({ color2: e.target.value })} className="h-7 w-12 cursor-pointer rounded border border-gray-200" />
+          <Color valor={d.color2} onCambio={v => set({ color2: v }, false)} />
         </Fila>
       )}
       <div className="flex flex-wrap items-center justify-between gap-2 pt-1">

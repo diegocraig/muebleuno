@@ -1,5 +1,5 @@
 import type {
-  DefElectro, DefModulo, Escena, Estandares, Item, Pared, ProductoCatalogo, Presupuesto, Ubicacion,
+  Abertura, DefElectro, DefModulo, Escena, Estandares, Item, Pared, ProductoCatalogo, Presupuesto, Ubicacion,
 } from './tipos'
 import { preset } from './materiales'
 
@@ -145,7 +145,10 @@ export function largoPared(esc: Escena, p: Pared) {
 export interface Caja { x0: number; x1: number; z0: number; z1: number; y0: number; y1: number }
 
 /** Centro en planta + rotación (grados) de un ítem; la profundidad mira hacia +z local. */
-export function transformar(it: Item, esc: Escena): { cx: number; cz: number; rot: number } {
+/** Solo hace falta el ambiente: así los componentes 3D no dependen de toda la escena. */
+export type ConAmbiente = { ambiente: Escena['ambiente'] }
+
+export function transformar(it: Item, esc: ConAmbiente): { cx: number; cz: number; rot: number } {
   const { ancho, prof: p } = medidas(it)
   const prof = p + 2 * (it.separacion ?? 0) // el centro se corre `separacion` desde la pared
   const W = esc.ambiente.ancho, D = esc.ambiente.largo
@@ -159,7 +162,7 @@ export function transformar(it: Item, esc: Escena): { cx: number; cz: number; ro
   }
 }
 
-export function caja(it: Item, esc: Escena): Caja {
+export function caja(it: Item, esc: ConAmbiente): Caja {
   const { ancho, alto, prof } = medidas(it)
   const y0 = it.elevacion, y1 = it.elevacion + alto
   const W = esc.ambiente.ancho, D = esc.ambiente.largo
@@ -192,7 +195,11 @@ function ignorarChoque(a: Item, b: Item) {
   if (a.deco || b.deco) return true
   if (a.grupo && a.grupo === b.grupo) return false
   const na = nivel(a), nb = nivel(b)
-  const empotra = (x: Item) => x.electro && (x.electro.empotrable || ['anafe', 'bacha', 'horno'].includes(x.electro.tipo))
+  // Solo lo que va dentro o encima de un mueble: un lavavajillas integrable ocupa su propio lugar.
+  const empotra = (x: Item) => !!x.electro && (
+    ['anafe', 'bacha', 'horno'].includes(x.electro.tipo) ||
+    (x.electro.empotrable && ['microondas', 'campana'].includes(x.electro.tipo))
+  )
   if ((na === 'mesada' && b.modulo) || (nb === 'mesada' && a.modulo)) return true
   if ((empotra(a) && b.modulo) || (empotra(b) && a.modulo)) return true
   return false
@@ -214,18 +221,125 @@ export function conflictos(esc: Escena): Conflicto[] {
       if (ignorarChoque(it, o)) continue
       if (solapan(c, cajas[j])) out.push({ a: it.id, b: o.id, texto: `${it.nombre} choca con ${o.nombre}` })
     }
-    // Aberturas: un mueble no puede tapar una puerta; sí puede ir bajo una ventana.
-    if (it.ubicacion !== 'libre' && !it.deco) {
+    // Aberturas: nada puede tapar una puerta o una ventana, tampoco un mueble de la
+    // pared vecina que llega hasta la esquina. Sí puede ir un bajo debajo de una ventana.
+    if (!it.deco) {
       for (const ab of esc.ambiente.aberturas) {
-        if (ab.pared !== it.ubicacion) continue
-        const { ancho } = medidas(it)
-        const choqueX = it.s < ab.s + ab.ancho - EPS && ab.s < it.s + ancho - EPS
-        const choqueY = c.y0 < ab.elevacion + ab.alto - EPS && ab.elevacion < c.y1 - EPS
-        if (choqueX && choqueY) out.push({ a: it.id, b: '', texto: `${it.nombre} tapa ${ab.tipo === 'puerta' ? 'la puerta' : 'la ventana'}` })
+        if (!esc.ambiente.paredes[ab.pared]) continue
+        if (solapan(c, cajaAbertura(ab, W, D))) {
+          out.push({ a: it.id, b: '', texto: `${it.nombre} tapa ${ab.tipo === 'puerta' ? 'la puerta' : 'la ventana'}` })
+        }
       }
+    }
+    // Esquinas ciegas e islas pegadas: algo de otra pared delante del frente de un mueble.
+    if (it.modulo && it.ubicacion !== 'libre' && !esEsquinero(it)) {
+      const frente = zonaFrente(it, esc)
+      esc.items.forEach((o, j) => {
+        if (j === i || o.deco || o.ubicacion === it.ubicacion) return
+        if (o.electro && ['anafe', 'bacha', 'campana', 'microondas'].includes(o.electro.tipo)) return
+        const co = cajas[j]
+        if (!solapan(frente, co)) return
+        const alLargo = it.ubicacion === 'fondo' || it.ubicacion === 'frente'
+        const cm = Math.round(alLargo ? Math.min(frente.x1, co.x1) - Math.max(frente.x0, co.x0) : Math.min(frente.z1, co.z1) - Math.max(frente.z0, co.z0))
+        if (cm < 3) return
+        out.push({
+          a: it.id, b: o.id,
+          texto: o.ubicacion === 'libre'
+            ? `${o.nombre} queda a menos de ${DESPEJE_FRENTE} cm del frente de ${it.nombre}`
+            : `${o.nombre} tapa ${cm} cm del frente de ${it.nombre} (esquina ciega): conviene un esquinero`,
+        })
+      })
     }
   })
   return out
+}
+
+/** Espacio mínimo libre delante de un mueble para poder abrirlo (cm). */
+export const DESPEJE_FRENTE = 35
+
+function cajaAbertura(ab: Abertura, W: number, D: number): Caja {
+  const g = 6 // cm hacia adentro del ambiente
+  const y0 = ab.elevacion, y1 = ab.elevacion + ab.alto
+  switch (ab.pared) {
+    case 'fondo': return { x0: ab.s, x1: ab.s + ab.ancho, z0: 0, z1: g, y0, y1 }
+    case 'frente': return { x0: ab.s, x1: ab.s + ab.ancho, z0: D - g, z1: D, y0, y1 }
+    case 'izq': return { x0: 0, x1: g, z0: ab.s, z1: ab.s + ab.ancho, y0, y1 }
+    case 'der': return { x0: W - g, x1: W, z0: ab.s, z1: ab.s + ab.ancho, y0, y1 }
+  }
+}
+
+/** Franja de DESPEJE_FRENTE cm delante del frente de un mueble de pared. */
+function zonaFrente(it: Item, esc: ConAmbiente): Caja {
+  const c = caja(it, esc)
+  const f = DESPEJE_FRENTE
+  switch (it.ubicacion) {
+    case 'fondo': return { ...c, z0: c.z1, z1: c.z1 + f }
+    case 'frente': return { ...c, z1: c.z0, z0: c.z0 - f }
+    case 'izq': return { ...c, x0: c.x1, x1: c.x1 + f }
+    default: return { ...c, x1: c.x0, x0: c.x0 - f }
+  }
+}
+
+/**
+ * Completa una escena guardada con los valores por defecto que le falten
+ * (proyectos viejos, o JSON incompleto) y descarta ítems sin definición.
+ */
+export function normalizarEscena(e: Partial<Escena> | null | undefined): Escena {
+  const b = escenaInicial()
+  if (!e || typeof e !== 'object') return b
+  const num = (v: unknown, d: number) => (typeof v === 'number' && isFinite(v) ? v : d)
+  return {
+    version: 1,
+    ambiente: {
+      ancho: num(e.ambiente?.ancho, b.ambiente.ancho),
+      largo: num(e.ambiente?.largo, b.ambiente.largo),
+      alto: num(e.ambiente?.alto, b.ambiente.alto),
+      paredes: { ...b.ambiente.paredes, ...e.ambiente?.paredes },
+      aberturas: Array.isArray(e.ambiente?.aberturas) ? e.ambiente!.aberturas : [],
+    },
+    estandares: { ...b.estandares, ...e.estandares },
+    materiales: { ...b.materiales, ...e.materiales },
+    tirador: { ...b.tirador, ...e.tirador },
+    luces: {
+      ...b.luces, ...e.luces,
+      sol: { ...b.luces.sol, ...e.luces?.sol },
+      techo: { ...b.luces.techo, ...e.luces?.techo },
+      led: { ...b.luces.led, ...e.luces?.led },
+    },
+    items: (Array.isArray(e.items) ? e.items : [])
+      .filter(it => it && typeof it.id === 'string' && (it.modulo || it.electro || it.deco))
+      .map(it => ({ ...it, s: num(it.s, 0), elevacion: num(it.elevacion, 0) })),
+  }
+}
+
+/** Presupuesto guardado → forma válida (listas, números ≥ 0, descuento 0–100). */
+export function normalizarPresupuesto(p: unknown): Presupuesto {
+  const b = (p && typeof p === 'object' ? p : {}) as Partial<Presupuesto>
+  const num = (v: unknown, min = 0, max = 1e12) => { const n = Number(v); return isFinite(n) ? Math.min(max, Math.max(min, n)) : min }
+  return {
+    extras: (Array.isArray(b.extras) ? b.extras : []).slice(0, 50).map(e => ({
+      id: String(e?.id ?? uid()), concepto: String(e?.concepto ?? '').slice(0, 200), cantidad: num(e?.cantidad), precioUnitario: num(e?.precioUnitario),
+    })),
+    mesadaPorMetro: !!b.mesadaPorMetro,
+    precioMesadaMl: num(b.precioMesadaMl),
+    incluirElectros: !!b.incluirElectros,
+    descuentoPct: num(b.descuentoPct, 0, 100),
+    tipoEnvioId: Number.isInteger(b.tipoEnvioId) ? (b.tipoEnvioId as number) : null,
+    notas: typeof b.notas === 'string' ? b.notas.slice(0, 4000) : '',
+    validezDias: num(b.validezDias ?? PRESUPUESTO_DEFAULT.validezDias, 1, 365),
+  }
+}
+
+/** Tramos del salpicadero de una mesada, descontando ventanas y puertas que lo cruzan. */
+export function tramosSalpicadero(esc: Escena, t: TramoMesada, y0: number, y1: number): [number, number][] {
+  let libres: [number, number][] = [[t.s0, t.s1]]
+  for (const ab of esc.ambiente.aberturas) {
+    if (ab.pared !== t.ubicacion || !(ab.elevacion < y1 && y0 < ab.elevacion + ab.alto)) continue
+    const a = ab.s - 2, b = ab.s + ab.ancho + 2
+    libres = libres.flatMap(([p, q]) => (b <= p || a >= q ? [[p, q]] : [[p, Math.min(q, a)], [Math.max(p, b), q]]) as [number, number][])
+      .filter(([p, q]) => q - p > 3)
+  }
+  return libres
 }
 
 // ─── Imanes al arrastrar ────────────────────────────────────────────────────
@@ -374,7 +488,6 @@ export function productoPorAncho(catalogo: ProductoCatalogo[], grupo: 'bajo' | '
     let s = 0
     if (d.frente) s += 5
     if (d.columnas.some(c => ['micro', 'hueco', 'vidrio', 'rebatible'].includes(c.tipo))) s += 4
-    if (grupo === 'bajo' && d.columnas.some(c => c.tipo === 'cajones')) s -= 1
     return s
   }
   for (const p of catalogo) {
@@ -405,7 +518,7 @@ export function lineasPresupuesto(esc: Escena, precios: Map<number, number>, pre
   for (const it of esc.items) {
     if (!it.cuentaEnPresupuesto) continue
     const tipo = it.origen
-    const clave = tipo === 'producto' ? `p${it.productoId}` : tipo === 'electro' ? `e${it.electroId ?? it.nombre}` : `g${it.nombre}|${it.precio}`
+    const clave = tipo === 'producto' ? `p${it.productoId}` : tipo === 'electro' ? `e${it.electroId ?? ''}|${it.nombre}|${it.precio}` : `g${it.nombre}|${it.precio}`
     const precio = tipo === 'producto' ? (precios.get(it.productoId!) ?? it.precio) : it.precio
     const incluido = tipo !== 'electro' || pres.incluirElectros
     const l = mapa.get(clave)

@@ -1,8 +1,8 @@
 'use client'
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
-import type { Abertura, Escena, Pared } from '@/lib/render/tipos'
-import { elevacionPorDefecto, largoPared, topeMesada, tramosMesada } from '@/lib/render/escena'
+import type { Abertura, Pared } from '@/lib/render/tipos'
+import { elevacionPorDefecto, topeMesada, tramosMesada, tramosSalpicadero } from '@/lib/render/escena'
 import { cajaUV, M } from './geometria'
 import { MAT, material, matColor } from './texturas'
 import { useRender } from './store'
@@ -75,24 +75,29 @@ function AberturaMalla({ a, signo }: { a: Abertura; signo: 1 | -1 }) {
   )
 }
 
-function Paredes({ esc }: { esc: Escena }) {
-  const { ancho, largo, alto, paredes, aberturas } = esc.ambiente
+function ParedMalla({ largo, alto, aberturas, signo, mat }: { largo: number; alto: number; aberturas: Abertura[]; signo: 1 | -1; mat: THREE.Material }) {
+  // La geometría solo se regenera si cambian las medidas o las aberturas, y la anterior se libera.
+  const clave = `${largo}|${alto}|${signo}|${aberturas.map(a => `${a.s},${a.ancho},${a.alto},${a.elevacion},${a.tipo}`).join(';')}`
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const geo = useMemo(() => geometriaPared(largo, alto, aberturas, signo), [clave])
+  useEffect(() => () => geo.dispose(), [geo])
+  return <mesh geometry={geo} material={mat} receiveShadow castShadow />
+}
+
+function Paredes() {
+  const { ancho, largo, alto, paredes, aberturas } = useRender(s => s.escena.ambiente)
+  const def = useRender(s => s.escena.materiales.paredes)
   const W = ancho * M, D = largo * M, H = alto * M
-  const mat = useMemo(() => {
-    const m = material(esc.materiales.paredes).clone()
-    m.shadowSide = THREE.DoubleSide
-    return m
-  }, [esc.materiales.paredes])
+  const mat = material(def, true)
   return (
     <>
       {(['fondo', 'izq', 'der', 'frente'] as Pared[]).filter(p => paredes[p]).map(p => {
         const { pos, rot, signo } = marcoPared(p, W, D)
-        const L = largoPared(esc, p) * M
+        const L = p === 'fondo' || p === 'frente' ? W : D
         const abs = aberturas.filter(a => a.pared === p)
         return (
           <group key={p} position={pos} rotation={[0, rot, 0]}>
-            <mesh geometry={geometriaPared(L, H, abs, signo)} material={mat} receiveShadow castShadow />
-            {/* zócalo de la pared */}
+            <ParedMalla largo={L} alto={H} aberturas={abs} signo={signo} mat={mat} />
             {abs.map(a => <AberturaMalla key={a.id} a={a} signo={signo} />)}
           </group>
         )
@@ -101,38 +106,43 @@ function Paredes({ esc }: { esc: Escena }) {
   )
 }
 
-function Piso({ esc }: { esc: Escena }) {
-  const W = esc.ambiente.ancho * M, D = esc.ambiente.largo * M
+function Piso() {
+  const ancho = useRender(s => s.escena.ambiente.ancho)
+  const largo = useRender(s => s.escena.ambiente.largo)
+  const def = useRender(s => s.escena.materiales.piso)
+  const fondo = useRender(s => s.escena.luces.fondo)
+  const W = ancho * M, D = largo * M
   const geo = useMemo(() => {
     const g = new THREE.PlaneGeometry(W, D)
     const uv = g.attributes.uv as THREE.BufferAttribute
     for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * W, uv.getY(i) * D)
     return g
   }, [W, D])
+  useEffect(() => () => geo.dispose(), [geo])
   return (
     <group>
-      <mesh geometry={geo} material={material(esc.materiales.piso)} rotation={[-Math.PI / 2, 0, 0]} position={[W / 2, 0, D / 2]} receiveShadow />
+      <mesh geometry={geo} material={material(def)} rotation={[-Math.PI / 2, 0, 0]} position={[W / 2, 0, D / 2]} receiveShadow />
       {/* base gris fuera del ambiente */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[W / 2, -0.005, D / 2]} receiveShadow>
         <planeGeometry args={[W + 30, D + 30]} />
-        <meshStandardMaterial color={esc.luces.fondo} roughness={1} />
+        <meshStandardMaterial color={fondo} roughness={1} />
       </mesh>
     </group>
   )
 }
 
-function Techo({ esc }: { esc: Escena }) {
-  const W = esc.ambiente.ancho * M, D = esc.ambiente.largo * M, H = esc.ambiente.alto * M
-  const mat = useMemo(() => {
-    const m = material(esc.materiales.techo).clone()
-    m.shadowSide = THREE.DoubleSide
-    return m
-  }, [esc.materiales.techo])
+function Techo() {
+  const ancho = useRender(s => s.escena.ambiente.ancho)
+  const largo = useRender(s => s.escena.ambiente.largo)
+  const alto = useRender(s => s.escena.ambiente.alto)
+  const def = useRender(s => s.escena.materiales.techo)
+  const W = ancho * M, D = largo * M, H = alto * M
   // Mira hacia abajo: desde arriba no se ve, pero igual proyecta sombra.
-  return <mesh material={mat} rotation={[Math.PI / 2, 0, 0]} position={[W / 2, H, D / 2]} castShadow receiveShadow><planeGeometry args={[W, D]} /></mesh>
+  return <mesh material={material(def, true)} rotation={[Math.PI / 2, 0, 0]} position={[W / 2, H, D / 2]} castShadow receiveShadow><planeGeometry args={[W, D]} /></mesh>
 }
 
-function Mesadas({ esc }: { esc: Escena }) {
+function Mesadas() {
+  const esc = useRender(s => s.escena)
   const est = esc.estandares
   const W = esc.ambiente.ancho, D = esc.ambiente.largo
   const matMesada = material(esc.materiales.mesada)
@@ -159,9 +169,16 @@ function Mesadas({ esc }: { esc: Escena }) {
         return (
           <group key={i} position={[cx * M, 0, cz * M]} rotation={[0, rot, 0]}>
             <mesh geometry={cajaUV(L * M, esp, pm * M)} material={matMesada} position={[0, y + dy, 0]} castShadow receiveShadow />
-            {est.salpicadero && (
-              <mesh geometry={cajaUV(L * M, altoSalp * M, 0.008)} material={matSalp} position={[0, tope * M + (altoSalp * M) / 2, -pm * M / 2 + 0.004 + dy]} receiveShadow />
-            )}
+            {est.salpicadero && tramosSalpicadero(esc, t, tope, tope + altoSalp).map(([a, b], k) => (
+              <mesh
+                key={k}
+                geometry={cajaUV((b - a) * M, altoSalp * M, 0.008)}
+                material={matSalp}
+                // En paredes izquierda y frente el eje local corre al revés que `s`.
+                position={[((a + b) / 2 - mid) * M * (t.ubicacion === 'izq' || t.ubicacion === 'frente' ? -1 : 1), tope * M + (altoSalp * M) / 2, -pm * M / 2 + 0.004 + dy]}
+                receiveShadow
+              />
+            ))}
           </group>
         )
       })}
@@ -170,13 +187,12 @@ function Mesadas({ esc }: { esc: Escena }) {
 }
 
 export default function Habitacion() {
-  const esc = useRender(s => s.escena)
   return (
     <group>
-      <Piso esc={esc} />
-      <Paredes esc={esc} />
-      <Techo esc={esc} />
-      <Mesadas esc={esc} />
+      <Piso />
+      <Paredes />
+      <Techo />
+      <Mesadas />
     </group>
   )
 }

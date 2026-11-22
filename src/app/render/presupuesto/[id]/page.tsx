@@ -1,22 +1,26 @@
 import { notFound } from 'next/navigation'
 import Image from 'next/image'
 import { prisma } from '@/lib/prisma'
-import { lineasPresupuesto, metrosMesada, totalesPresupuesto, PRESUPUESTO_DEFAULT, medidas } from '@/lib/render/escena'
+import { exigirAdmin } from '@/lib/render/servidor'
+import { lineasPresupuesto, metrosMesada, normalizarEscena, normalizarPresupuesto, totalesPresupuesto, medidas } from '@/lib/render/escena'
 import type { Escena, Presupuesto } from '@/lib/render/tipos'
 import { formatPrice } from '@/lib/utils'
 import Imprimir from './Imprimir'
 
 export default async function PresupuestoPage({ params }: { params: Promise<{ id: string }> }) {
   const id = Number((await params).id)
+  await exigirAdmin(Number.isInteger(id) && id > 0 ? `/render/presupuesto/${id}` : '/render/proyectos')
+  if (!Number.isInteger(id) || id <= 0) notFound()
   const p = await prisma.renderProyecto.findUnique({ where: { id } })
   if (!p) notFound()
-  const esc = JSON.parse(p.datos) as Escena
-  const pres: Presupuesto = { ...PRESUPUESTO_DEFAULT, ...JSON.parse(p.presupuesto || '{}') }
+  const esc = normalizarEscena(JSON.parse(p.datos) as Escena)
+  const pres: Presupuesto = normalizarPresupuesto(JSON.parse(p.presupuesto || '{}'))
   const ids = [...new Set(esc.items.map(i => i.productoId).filter((x): x is number => !!x))]
   const productos = await prisma.producto.findMany({ where: { id: { in: ids } }, select: { id: true, precio: true, precioOferta: true } })
   const precios = new Map(productos.map(x => [x.id, x.precioOferta ?? x.precio]))
   const lineas = lineasPresupuesto(esc, precios, pres)
-  const envio = pres.tipoEnvioId ? await prisma.tipoEnvio.findUnique({ where: { id: pres.tipoEnvioId } }) : null
+  // Mismo criterio que la venta: un envío desactivado no se cobra.
+  const envio = pres.tipoEnvioId ? await prisma.tipoEnvio.findFirst({ where: { id: pres.tipoEnvioId, activo: true } }) : null
   const metros = metrosMesada(esc)
   const t = totalesPresupuesto(lineas, pres, metros, envio?.costo ?? 0)
   const conf = await prisma.configuracion.findUnique({ where: { id: 1 } })

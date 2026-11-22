@@ -1,10 +1,11 @@
 import { prisma } from '@/lib/prisma'
-import { catalogoCocina, listarElectros, tiposEnvio } from '@/lib/render/servidor'
+import { catalogoCocina, exigirAdmin, listarElectros, tiposEnvio } from '@/lib/render/servidor'
 import RenderApp, { type ProyectoInicial } from '@/components/render/RenderApp'
 import type { DatosProyecto } from '@/lib/render/tipos'
 
 export default async function RenderPage({ searchParams }: { searchParams: Promise<{ p?: string }> }) {
   const { p } = await searchParams
+  await exigirAdmin(p && Number(p) > 0 ? `/render?p=${Number(p)}` : '/render')
   const [catalogo, electros, envios] = await Promise.all([catalogoCocina(), listarElectros(), tiposEnvio()])
 
   let inicial: ProyectoInicial | null = null

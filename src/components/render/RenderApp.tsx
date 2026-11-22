@@ -10,7 +10,7 @@ import {
 import type { DatosProyecto, ElectroCatalogo, Escena, Presupuesto, ProductoCatalogo, TipoEnvioOpcion } from '@/lib/render/tipos'
 import { formatPrice, cn } from '@/lib/utils'
 import { useRender, type Panel } from './store'
-import { calcularPresupuesto, descargarImagen, guardarProyecto } from './acciones'
+import { borrarBorrador, calcularPresupuesto, descargarImagen, guardarBorrador, guardarProyecto, leerBorrador, type Borrador } from './acciones'
 import PanelCatalogo from './PanelCatalogo'
 import PanelSeleccion from './PanelSeleccion'
 import PanelAmbiente from './PanelAmbiente'
@@ -71,11 +71,14 @@ function Atajos() {
       if (mod && e.key.toLowerCase() === 'z') { e.preventDefault(); if (e.shiftKey) st.rehacer(); else st.deshacer(); return }
       if (mod && e.key.toLowerCase() === 'y') { e.preventDefault(); st.rehacer(); return }
       if (mod && e.key.toLowerCase() === 's') { e.preventDefault(); void guardarProyecto(); return }
+      if (st.arrastrando) return // nada de borrar/deshacer en medio de un arrastre
       if (e.key === 'Escape') { st.seleccionar(null); return }
       if (!sel) return
+      // Un mueble bloqueado no se mueve ni se borra desde el teclado.
+      if (sel.bloqueado && (e.key.startsWith('Arrow') || e.key === 'Delete' || e.key === 'Backspace' || e.key.toLowerCase() === 'r')) return
       if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); st.borrar(sel.id); return }
       if (mod && e.key.toLowerCase() === 'd') { e.preventDefault(); st.duplicar(sel.id); return }
-      if (e.key.toLowerCase() === 'r' && sel.ubicacion === 'libre') { st.actualizarItem(sel.id, x => { x.rot = ((x.rot ?? 0) + 90) % 360 }); return }
+      if (e.key.toLowerCase() === 'r' && !mod && sel.ubicacion === 'libre') { st.rotarItem(sel.id); return }
       if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
         e.preventDefault()
         const paso = e.shiftKey ? 10 : 1
@@ -85,7 +88,7 @@ function Atajos() {
           const dz = e.key === 'ArrowUp' ? -paso : e.key === 'ArrowDown' ? paso : 0
           st.moverLibre(sel.id, (sel.x ?? 0) + dx, (sel.z ?? 0) + dz)
         } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-          st.actualizarItem(sel.id, x => { x.elevacion = Math.max(0, x.elevacion + (e.key === 'ArrowUp' ? paso : -paso)) })
+          st.actualizarItem(sel.id, x => { x.elevacion = Math.max(0, x.elevacion + (e.key === 'ArrowUp' ? paso : -paso)) }, false)
         } else {
           st.moverItem(sel.id, sel.s + (e.key === 'ArrowLeft' ? -paso : paso), false)
         }
@@ -120,7 +123,8 @@ function Encabezado() {
 
   return (
     <header className="z-20 flex h-14 shrink-0 items-center gap-3 border-b border-gray-100 bg-white px-3 shadow-sm">
-      <Link href="/admin" className="shrink-0" title="Volver al panel">
+      <Link href="/admin" className="shrink-0" title="Volver al panel"
+        onClick={e => { if (sucio && !confirm('Hay cambios sin guardar. ¿Salir igual? (queda un borrador para recuperar)')) e.preventDefault() }}>
         <Image src="/logo.png" alt="Mueble UNO" width={130} height={28} className="h-7 w-auto" priority />
       </Link>
       <span className="hidden rounded bg-rojo-suave px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-rojo-principal sm:inline">Render · beta</span>
@@ -138,9 +142,10 @@ function Encabezado() {
           <span className="block text-[10px] uppercase tracking-wide text-gris-claro">Total</span>
           <span className="block text-sm font-bold leading-none text-rojo-principal">{formatPrice(total)}</span>
         </span>
-        <button type="button" title="Nuevo proyecto" onClick={() => { if (!sucio || confirm('Hay cambios sin guardar. ¿Empezar un proyecto nuevo?')) { nuevo(); window.history.replaceState(null, '', '/render') } }} className="rounded-lg p-2 text-gris-medio hover:bg-gris-fondo"><FilePlus2 className="h-4 w-4" /></button>
-        <Link href="/render/proyectos" title="Proyectos guardados" className="rounded-lg p-2 text-gris-medio hover:bg-gris-fondo"><FolderOpen className="h-4 w-4" /></Link>
-        <button type="button" onClick={async () => { setGuardando(true); await guardarProyecto(); setGuardando(false) }} disabled={guardando}
+        <button type="button" title="Nuevo proyecto" onClick={() => { if (!sucio || confirm('Hay cambios sin guardar. ¿Empezar un proyecto nuevo?')) { borrarBorrador(proyecto.id); nuevo(); window.history.replaceState(null, '', '/render') } }} className="rounded-lg p-2 text-gris-medio hover:bg-gris-fondo"><FilePlus2 className="h-4 w-4" /></button>
+        <Link href="/render/proyectos" title="Proyectos guardados" className="rounded-lg p-2 text-gris-medio hover:bg-gris-fondo"
+          onClick={e => { if (sucio && !confirm('Hay cambios sin guardar. ¿Salir igual? (queda un borrador para recuperar)')) e.preventDefault() }}><FolderOpen className="h-4 w-4" /></Link>
+        <button type="button" onClick={async () => { setGuardando(true); try { await guardarProyecto() } finally { setGuardando(false) } }} disabled={guardando}
           className="ml-1 inline-flex items-center gap-1.5 rounded-lg bg-rojo-principal px-3 py-1.5 text-sm font-semibold text-white hover:bg-rojo-hover disabled:opacity-60">
           {guardando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Guardar
         </button>
@@ -152,6 +157,7 @@ function Encabezado() {
 function PanelDerecho() {
   const panel = useRender(s => s.panel)
   const setPanel = useRender(s => s.setPanel)
+  const seleccion = useRender(s => s.seleccion)
   return (
     <div className="flex h-full flex-col">
       <Pestanas<Panel>
@@ -166,7 +172,7 @@ function PanelDerecho() {
         ]}
       />
       <div className="flex-1 overflow-y-auto">
-        {panel === 'seleccion' && <PanelSeleccion />}
+        {panel === 'seleccion' && <PanelSeleccion key={seleccion ?? 'nada'} />}
         {panel === 'ambiente' && <PanelAmbiente />}
         {panel === 'materiales' && <PanelMateriales />}
         {panel === 'luz' && <PanelLuz />}
@@ -183,19 +189,55 @@ export default function RenderApp({ catalogo, electros, envios, inicial }: {
   const [der, setDer] = useState(true)
   const aviso = useRender(s => s.aviso)
   const [listo, setListo] = useState(false)
+  const [borrador, setBorrador] = useState<Borrador | null>(null)
+  const sucio = useRender(s => s.sucio)
 
   useEffect(() => {
     useRender.setState({ catalogo, electros, envios })
     if (inicial) useRender.getState().cargar(inicial.datos, inicial.presupuesto, inicial.proyecto)
     else useRender.getState().nuevo()
     setListo(true)
+    // ¿Quedó un borrador sin guardar de este mismo proyecto (o de uno nuevo)?
+    const b = leerBorrador(inicial?.id)
+    if (b) setBorrador(b)
     // En pantallas chicas arrancar con los paneles cerrados.
     if (window.innerWidth < 900) { setIzq(false); setDer(false) }
   }, [catalogo, electros, envios, inicial])
 
+  // Red de seguridad: mientras haya cambios sin guardar, se va dejando un borrador local.
+  useEffect(() => {
+    let t: ReturnType<typeof setTimeout> | null = null
+    const baja = useRender.subscribe((s, prev) => {
+      if (!s.sucio || (s.escena === prev.escena && s.presupuesto === prev.presupuesto && s.proyecto === prev.proyecto)) return
+      if (t) clearTimeout(t)
+      t = setTimeout(() => { t = null; guardarBorrador() }, 1500)
+    })
+    // Al salir o recargar antes de que venza la espera, se vuelca lo pendiente.
+    const volcar = () => { if (t) { clearTimeout(t); t = null; guardarBorrador() } }
+    window.addEventListener('pagehide', volcar)
+    return () => { baja(); volcar(); window.removeEventListener('pagehide', volcar) }
+  }, [])
+
+  // Si se sigue trabajando sin recuperar, el borrador viejo se reemplaza: se saca el aviso.
+  useEffect(() => { if (sucio) setBorrador(null) }, [sucio])
+
+  const recuperar = () => {
+    if (!borrador) return
+    useRender.getState().cargar(borrador.escena, borrador.presupuesto, borrador.proyecto)
+    useRender.setState({ sucio: true })
+    setBorrador(null)
+  }
+
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-gris-fondo text-gris-oscuro">
       <Encabezado />
+      {borrador && !sucio && (
+        <div className="z-10 flex flex-wrap items-center justify-center gap-3 border-b border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900">
+          <span>Quedó un borrador sin guardar de “{borrador.proyecto.nombre}” ({new Date(borrador.fecha).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })}).</span>
+          <button type="button" onClick={recuperar} className="rounded-lg bg-rojo-principal px-3 py-1 font-semibold text-white hover:bg-rojo-hover">Recuperar</button>
+          <button type="button" onClick={() => { borrarBorrador(borrador.proyecto.id); setBorrador(null) }} className="font-semibold text-amber-900 underline">Descartar</button>
+        </div>
+      )}
       <div className="relative flex min-h-0 flex-1">
         <aside className={cn('absolute inset-y-0 left-0 z-10 w-[300px] max-w-[85vw] border-r border-gray-100 bg-white transition-transform md:relative md:translate-x-0', izq ? 'translate-x-0' : '-translate-x-full md:hidden')}>
           <PanelCatalogo />

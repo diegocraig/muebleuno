@@ -10,7 +10,9 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
   if (auth.error) return auth.error
   const v = validarElectro(await req.json().catch(() => null))
   if ('error' in v) return NextResponse.json({ error: v.error }, { status: 400 })
-  const e = await prisma.electrodomestico.update({ where: { id: Number((await params).id) }, data: v.data })
+  const id = Number((await params).id)
+  const e = Number.isInteger(id) ? await prisma.electrodomestico.update({ where: { id }, data: v.data }).catch(() => null) : null
+  if (!e) return NextResponse.json({ error: 'Modelo no encontrado' }, { status: 404 })
   return NextResponse.json(e)
 }
 
@@ -18,6 +20,7 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
 export async function DELETE(_: NextRequest, { params }: Ctx) {
   const auth = await adminORespuesta()
   if (auth.error) return auth.error
-  await prisma.electrodomestico.update({ where: { id: Number((await params).id) }, data: { activo: false } }).catch(() => null)
+  const id = Number((await params).id)
+  if (Number.isInteger(id)) await prisma.electrodomestico.update({ where: { id }, data: { activo: false } }).catch(() => null)
   return NextResponse.json({ ok: true })
 }

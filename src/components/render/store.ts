@@ -1,10 +1,11 @@
 'use client'
 import { create } from 'zustand'
+import { current, produce } from 'immer'
 import type {
   DatosProyecto, ElectroCatalogo, Escena, Item, Pared, Presupuesto, ProductoCatalogo, TipoEnvioOpcion, Ubicacion,
 } from '@/lib/render/tipos'
 import {
-  caja, combinarAnchos, elevacionPorDefecto, esquinaPorDefecto, escenaInicial, imantar, largoPared, medidas, PRESUPUESTO_DEFAULT,
+  caja, combinarAnchos, elevacionPorDefecto, normalizarEscena, normalizarPresupuesto, esquinaPorDefecto, escenaInicial, imantar, largoPared, medidas, PRESUPUESTO_DEFAULT,
   primerHueco, productoPorAncho, topeMesada, transformar, uid,
 } from '@/lib/render/escena'
 import { preset } from '@/lib/render/materiales'
@@ -66,8 +67,9 @@ interface Estado {
   moverItem: (id: string, s: number, imanes?: boolean) => void
   moverLibre: (id: string, x: number, z: number) => void
   cambiarUbicacion: (id: string, u: Ubicacion) => void
-  actualizarItem: (id: string, fn: (it: Item) => void) => void
+  actualizarItem: (id: string, fn: (it: Item) => void, historia?: boolean) => void
   duplicar: (id: string) => void
+  rotarItem: (id: string) => void
   borrar: (id: string) => void
   autocompletar: (pared: Pared) => void
 }
@@ -126,14 +128,18 @@ export const useRender = create<Estado>((set, get) => ({
 
   mutar: (fn, historia = true) => {
     const { escena, pasado } = get()
-    const sig = structuredClone(escena)
-    fn(sig)
+    // immer: solo se copia lo que cambia; el resto conserva su identidad y React
+    // no vuelve a dibujar los muebles que no se tocaron.
+    const sig = produce(escena, fn)
+    if (sig === escena) return
     set(historia
       ? { escena: sig, pasado: [...pasado.slice(-MAX_HISTORIA), escena], futuro: [], sucio: true }
       : { escena: sig, sucio: true })
   },
   marcarHistoria: () => {
     const { escena, pasado } = get()
+    // Si no cambió nada desde la última marca, no se apila un paso vacío.
+    if (pasado[pasado.length - 1] === escena) return
     set({ pasado: [...pasado.slice(-MAX_HISTORIA), escena], futuro: [] })
   },
   deshacer: () => {
@@ -160,7 +166,7 @@ export const useRender = create<Estado>((set, get) => ({
     setTimeout(() => { if (get().aviso?.texto === texto) set({ aviso: null }) }, 3500)
   },
   cargar: (escena, presupuesto, proyecto) =>
-    set({ escena, presupuesto: { ...PRESUPUESTO_DEFAULT, ...presupuesto }, proyecto, pasado: [], futuro: [], seleccion: null, sucio: false, camaraVersion: get().camaraVersion + 1 }),
+    set({ escena: normalizarEscena(escena), presupuesto: normalizarPresupuesto(presupuesto), proyecto, pasado: [], futuro: [], seleccion: null, sucio: false, camaraVersion: get().camaraVersion + 1 }),
   nuevo: () => set({
     escena: escenaInicial(), presupuesto: { ...PRESUPUESTO_DEFAULT }, pasado: [], futuro: [], seleccion: null, sucio: false,
     proyecto: { nombre: 'Cocina nueva', cliente: '', email: '', telefono: '', estado: 'borrador' },
@@ -174,7 +180,11 @@ export const useRender = create<Estado>((set, get) => ({
       const grupo = uid()
       get().mutar(esc => {
         const base = itemDeProducto(p, p.combo!.componentes[0], esc, { grupo })
-        const ub = ubicarNuevo(esc, base, paredDestino)
+        // El hueco se busca para el ancho total del combo (el bajo o la fila de alacenas, lo que sea mayor).
+        const anchoAlacenas = p.combo!.componentes.slice(1).reduce((a, d) => a + d.ancho, 0)
+        const prueba: Item = { ...base, modulo: { ...base.modulo!, ancho: Math.max(base.modulo!.ancho, anchoAlacenas) } }
+        const lugar = ubicarNuevo(esc, prueba, paredDestino)
+        const ub: Item = { ...base, ubicacion: lugar.ubicacion, s: lugar.s, x: lugar.x, z: lugar.z, rot: lugar.rot }
         esc.items.push(ub)
         let s = ub.s
         p.combo!.componentes.slice(1).forEach(def => {
@@ -213,9 +223,14 @@ export const useRender = create<Estado>((set, get) => ({
       const sel = esc.items.find(i => i.id === get().seleccion)
       let it: Item
       if (sel && sel.ubicacion !== 'libre' && sel.modulo && ['anafe', 'bacha', 'horno'].includes(e.tipo)) {
-        it = { ...base, ubicacion: sel.ubicacion, s: sel.s + (sel.modulo.ancho - e.ancho) / 2 }
+        it = { ...base, ubicacion: sel.ubicacion, s: Math.max(0, sel.s + (sel.modulo.ancho - e.ancho) / 2) }
       } else {
         it = ubicarNuevo(esc, base, paredDestino)
+      }
+      // Bachas y anafes van centrados en la profundidad de la mesada: la grifería
+      // queda sobre la mesada y no dentro de la pared.
+      if (it.ubicacion !== 'libre' && (e.tipo === 'anafe' || e.tipo === 'bacha')) {
+        it.separacion = Math.max(e.tipo === 'bacha' ? 8 : 4, Math.round((esc.estandares.profMesada - e.profundidad) / 2))
       }
       esc.items.push(it)
       set({ seleccion: it.id, panel: 'seleccion' })
@@ -353,8 +368,17 @@ export const useRender = create<Estado>((set, get) => ({
     get().mutar(esc => {
       const it = esc.items.find(i => i.id === id)
       if (!it || it.ubicacion === 'libre') return
-      const nuevo = imanes ? imantar(esc, it, s) : Math.round(s * 10) / 10
-      const delta = nuevo - it.s
+      const tope = Math.max(0, largoPared(esc, it.ubicacion) - medidas(it).ancho)
+      const nuevo = imanes ? imantar(esc, it, s) : Math.round(Math.max(0, Math.min(tope, s)) * 10) / 10
+      let delta = nuevo - it.s
+      if (it.grupo) {
+        // Combos: ninguna pieza del grupo puede salirse de la pared.
+        const L = largoPared(esc, it.ubicacion)
+        const grupo = esc.items.filter(o => o.grupo === it.grupo && o.ubicacion === it.ubicacion)
+        const ini = Math.min(...grupo.map(o => o.s)), fin = Math.max(...grupo.map(o => o.s + medidas(o).ancho))
+        delta = Math.max(-ini, Math.min(L - fin, delta))
+      }
+      if (!delta) return
       for (const o of esc.items) if (o.id === id || (it.grupo && o.grupo === it.grupo)) o.s += delta
     }, false)
   },
@@ -364,6 +388,7 @@ export const useRender = create<Estado>((set, get) => ({
       const it = esc.items.find(i => i.id === id)
       if (!it) return
       const dx = Math.round(x) - (it.x ?? 0), dz = Math.round(z) - (it.z ?? 0)
+      if (!dx && !dz) return
       for (const o of esc.items) if (o.id === id || (it.grupo && o.grupo === it.grupo)) { o.x = (o.x ?? 0) + dx; o.z = (o.z ?? 0) + dz }
     }, false)
   },
@@ -374,31 +399,81 @@ export const useRender = create<Estado>((set, get) => ({
       if (!it) return
       const miembros = esc.items.filter(o => o.id === id || (it.grupo && o.grupo === it.grupo))
       if (u === 'libre') {
+        if (it.ubicacion === 'libre') return
         const { cx, cz } = transformar(it, esc)
-        for (const o of miembros) { o.ubicacion = 'libre'; o.x = cx; o.z = Math.min(esc.ambiente.largo - 60, cz + 120); o.rot = 0 }
+        const x0 = cx, z0 = Math.min(esc.ambiente.largo - 60, cz + 120)
+        const centroLider = it.s + medidas(it).ancho / 2, profLider = medidas(it).prof
+        for (const o of miembros) {
+          const m = medidas(o)
+          // A lo largo: mismo corrimiento que tenían en la pared. En profundidad: fondos alineados.
+          o.x = Math.round(x0 + (o.s + m.ancho / 2 - centroLider))
+          o.z = Math.round(z0 - (profLider - m.prof) / 2)
+          o.rot = 0
+          o.ubicacion = 'libre'
+        }
         return
       }
+      const origen = it.ubicacion === 'libre' ? (it.x ?? 0) : it.s
       const s = primerHueco(esc, { ...it, ubicacion: u }, u) ?? 0
-      for (const o of miembros) { o.ubicacion = u; o.s = s + (o.s - it.s) }
+      for (const o of miembros) {
+        o.s = Math.max(0, s + ((it.ubicacion === 'libre' ? (o.x ?? 0) : o.s) - origen))
+        o.ubicacion = u
+        if (o.modulo?.tipo.startsWith('esquinero')) o.esquina = esquinaPorDefecto(u, o.s, largoPared(esc, u))
+      }
     })
   },
 
-  actualizarItem: (id, fn) => get().mutar(esc => { const it = esc.items.find(i => i.id === id); if (it) fn(it) }),
+  actualizarItem: (id, fn, historia = true) => get().mutar(esc => { const it = esc.items.find(i => i.id === id); if (it) fn(it) }, historia),
 
   duplicar: id => {
     get().mutar(esc => {
       const it = esc.items.find(i => i.id === id)
       if (!it) return
-      const copia: Item = { ...structuredClone(it), id: uid(), grupo: undefined, cuentaEnPresupuesto: it.origen === 'deco' ? it.cuentaEnPresupuesto : it.origen !== 'producto' || it.precio > 0 ? true : it.cuentaEnPresupuesto }
-      if (copia.origen === 'producto' && copia.precio === 0) {
-        // Parte de un combo duplicada suelta: no tiene precio propio.
-        copia.cuentaEnPresupuesto = false
+      if (it.grupo) {
+        // Combos y juegos: se copia el grupo completo, así el presupuesto suma un combo
+        // entero y no quedan piezas sueltas con el precio del combo (o gratis).
+        const piezas = esc.items.filter(o => o.grupo === it.grupo)
+        const grupo = uid()
+        const lider = piezas.find(o => o.cuentaEnPresupuesto) ?? piezas[0]
+        const anchoGrupo = Math.max(...piezas.map(o => o.s + medidas(o).ancho)) - Math.min(...piezas.map(o => o.s))
+        let ds = 0, dx = 0
+        if (it.ubicacion === 'libre') dx = Math.max(...piezas.map(o => medidas(o).ancho)) + 60
+        else {
+          const prueba = { ...structuredClone(current(lider)), modulo: lider.modulo ? { ...current(lider).modulo!, ancho: anchoGrupo } : undefined } as Item
+          const s = primerHueco(esc, prueba, it.ubicacion)
+          ds = s === null ? 0 : s - Math.min(...piezas.map(o => o.s))
+        }
+        let nuevoId = ''
+        for (const o of piezas) {
+          const c: Item = { ...structuredClone(current(o)), id: uid(), grupo, s: o.s + ds, ...(o.ubicacion === 'libre' ? { x: (o.x ?? 0) + dx } : {}) }
+          if (o.id === id) nuevoId = c.id
+          esc.items.push(c)
+        }
+        set({ seleccion: nuevoId })
+        return
       }
+      const copia: Item = { ...structuredClone(current(it)), id: uid() }
       const ub = it.ubicacion === 'libre'
         ? { ...copia, x: (it.x ?? 0) + medidas(it).ancho + 5 }
         : (() => { const s = primerHueco(esc, copia, it.ubicacion); return s === null ? { ...copia, s: it.s } : { ...copia, s } })()
       esc.items.push(ub)
       set({ seleccion: ub.id })
+    })
+  },
+
+  rotarItem: id => {
+    get().mutar(esc => {
+      const it = esc.items.find(i => i.id === id)
+      if (!it || it.ubicacion !== 'libre') return
+      const px = it.x ?? 0, pz = it.z ?? 0
+      for (const o of esc.items) {
+        if (o.id !== id && !(it.grupo && o.grupo === it.grupo)) continue
+        // 90° alrededor del ítem elegido: (dx, dz) → (dz, -dx), igual que gira el mueble.
+        const dx = (o.x ?? 0) - px, dz = (o.z ?? 0) - pz
+        o.x = Math.round(px + dz)
+        o.z = Math.round(pz - dx)
+        o.rot = (((o.rot ?? 0) + 90) % 360)
+      }
     })
   },
 
@@ -431,6 +506,7 @@ export const useRender = create<Estado>((set, get) => ({
         const ocup: [number, number][] = []
         const c0 = caja({ ...prueba, s: 0 }, esc)
         for (const o of esc.items) {
+          if (o.deco) continue // la decoración no ocupa lugar: se reacomoda después
           if (o.ubicacion !== pared && o.ubicacion !== 'libre') {
             // Muebles de paredes vecinas que invaden la esquina.
             const c = caja(o, esc)

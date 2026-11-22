@@ -25,16 +25,25 @@ export default function PanelPresupuesto() {
   const generarVenta = async () => {
     if (!proyecto.cliente || !proyecto.email || !proyecto.telefono) { avisar('Completá nombre, email y teléfono del cliente', 'error'); return }
     if (!incluidas.some(l => l.tipo === 'producto')) { avisar('El presupuesto no tiene productos del catálogo', 'error'); return }
-    const avisarMail = confirm(`Se va a crear un pedido "pendiente" en el panel por ${formatPrice(totales.total)}.\n\n¿Mandar también el aviso por mail a ventas? (Aceptar = sí, Cancelar = crear sin mail)`)
+    if (!confirm(`Se va a crear un pedido "pendiente" en el panel por ${formatPrice(totales.total)} a nombre de ${proyecto.cliente}.\n\n¿Continuar?`)) return
+    const avisarMail = confirm('¿Mandar también el aviso por mail a ventas?\n\nAceptar = sí · Cancelar = crear el pedido sin mail')
     setVendiendo(true)
-    const id = await guardarProyecto('presupuesto')
-    if (!id) { setVendiendo(false); return }
-    const r = await fetch(`/api/render/proyectos/${id}/venta`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ avisar: avisarMail }) })
-    const j = await r.json().catch(() => ({}))
-    setVendiendo(false)
-    if (!r.ok) { avisar(j.error ?? 'No se pudo generar la venta', 'error'); return }
-    useRender.setState(s => ({ proyecto: { ...s.proyecto, estado: 'venta', pedidoId: j.pedidoId }, sucio: false }))
-    avisar(`Pedido #${displayPedidoId(j.pedidoId)} creado`)
+    try {
+      const id = await guardarProyecto('presupuesto')
+      if (!id) return
+      const r = await fetch(`/api/render/proyectos/${id}/venta`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ avisar: avisarMail }) })
+      const j = await r.json().catch(() => ({}))
+      if (!r.ok) { avisar(j.error ?? 'No se pudo generar la venta', 'error'); return }
+      useRender.setState(s => ({ proyecto: { ...s.proyecto, estado: 'venta', pedidoId: j.pedidoId } }))
+      // El servidor recalcula con los precios de la base: si difiere de lo que se veía, se avisa.
+      avisar(j.total !== totales.total
+        ? `Pedido #${displayPedidoId(j.pedidoId)} creado por ${formatPrice(j.total)} (los precios cambiaron desde que abriste el proyecto)`
+        : `Pedido #${displayPedidoId(j.pedidoId)} creado`)
+    } catch {
+      avisar('No se pudo generar la venta: revisá la conexión', 'error')
+    } finally {
+      setVendiendo(false)
+    }
   }
 
   const verPresupuesto = async () => {

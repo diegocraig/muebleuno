@@ -26,7 +26,7 @@ export default function PanelAmbiente() {
     mutar(e => {
       e.ambiente.ancho = p.ancho
       e.ambiente.largo = p.largo
-      e.ambiente.paredes = { ...p.paredes, ...(p.id === 'paralela' ? {} : {}) }
+      e.ambiente.paredes = { ...p.paredes }
       e.ambiente.aberturas = e.ambiente.aberturas.filter(a => p.paredes[a.pared])
     })
     recentrar()

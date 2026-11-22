@@ -39,15 +39,19 @@ function Sol() {
     centro.y + Math.sin(el) * dist,
     centro.z - Math.cos(el) * Math.cos(az) * dist,
   ]
+  const r = Math.max(W, D) * 0.9
+  // La luz se recrea (key) al cambiar el tamaño del mapa o del frustum de sombras:
+  // three no los actualiza en caliente. El objetivo se reubica cada vez que se crea.
+  const clave = `${alta ? 4096 : 2048}|${r.toFixed(2)}`
   useEffect(() => {
     if (!luz.current) return
     luz.current.target.position.copy(centro)
     luz.current.target.updateMatrixWorld()
-  }, [centro])
+  }, [centro, sol.activo, clave])
   if (!sol.activo) return null
-  const r = Math.max(W, D) * 0.9
   return (
     <directionalLight
+      key={clave}
       ref={luz}
       position={pos}
       intensity={sol.intensidad}
@@ -95,7 +99,6 @@ function SpotTecho({ x, z, H, intensidad, color, sombra }: { x: number; z: numbe
 function LucesTecho() {
   const techo = useRender(s => s.escena.luces.techo)
   const amb = useRender(s => s.escena.ambiente)
-  const sombras = useRender(s => s.escena.luces.sombras)
   const W = amb.ancho * M, D = amb.largo * M, H = amb.alto * M
   const color = kelvinAHex(techo.temperatura)
   if (!techo.activo) return null

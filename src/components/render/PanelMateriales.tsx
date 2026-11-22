@@ -7,7 +7,7 @@ import { MATERIALES_PRESET, PRESETS_POR_GRUPO, TEXTURAS, preset } from '@/lib/re
 import { cn } from '@/lib/utils'
 import { miniatura } from './texturas'
 import { useRender } from './store'
-import { Deslizador, Fila, Seccion, Selector } from './ui'
+import { Color, Deslizador, Fila, Seccion, Selector } from './ui'
 
 /** Muestra cuadrada del material (se genera en el navegador). */
 export function Muestra({ def, activo, onClick, tam = 'h-8 w-8' }: { def: MatDef; activo?: boolean; onClick?: () => void; tam?: string }) {
@@ -66,7 +66,7 @@ function EditorGrupo({ grupo }: { grupo: GrupoMaterial }) {
       {abierto && (
         <div className="space-y-2 rounded-lg bg-gris-fondo/60 p-2">
           <Fila etiqueta="Color">
-            <input type="color" value={def.color} onChange={e => set({ color: e.target.value, nombre: 'Personalizado' }, false)} onBlur={() => useRender.getState().marcarHistoria()} className="h-7 w-12 cursor-pointer rounded border border-gray-200" />
+            <Color valor={def.color} onCambio={v => set({ color: v, nombre: 'Personalizado' }, false)} />
           </Fila>
           <Fila etiqueta="Textura">
             <Selector valor={def.textura} opciones={TEXTURAS.map(t => ({ valor: t.id as TexturaId, texto: t.nombre }))} onCambio={t => set({ textura: t, imagen: undefined })} />

@@ -2,12 +2,14 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { Plus } from 'lucide-react'
 import { prisma } from '@/lib/prisma'
+import { exigirAdmin } from '@/lib/render/servidor'
 import { formatPrice, displayPedidoId } from '@/lib/utils'
 import BorrarProyecto from './BorrarProyecto'
 
 const ESTADOS: Record<string, string> = { borrador: 'bg-gray-100 text-gris-medio', presupuesto: 'bg-amber-100 text-amber-800', venta: 'bg-green-100 text-green-700' }
 
 export default async function ProyectosPage() {
+  await exigirAdmin('/render/proyectos')
   const proyectos = await prisma.renderProyecto.findMany({
     orderBy: { actualizadoEn: 'desc' },
     select: { id: true, nombre: true, cliente: true, total: true, estado: true, captura: true, pedidoId: true, actualizadoEn: true },

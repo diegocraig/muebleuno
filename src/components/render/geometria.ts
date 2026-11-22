@@ -22,6 +22,13 @@ export function cajaUV(w: number, h: number, d: number): THREE.BoxGeometry {
   }
   uv.needsUpdate = true
   cache.set(k, g)
+  // Acotada: arrastrar un mueble genera un largo de mesada distinto por cada posición.
+  // Liberar una caja en uso es seguro (three vuelve a subir los buffers).
+  while (cache.size > 800) {
+    const [clave, vieja] = cache.entries().next().value as [string, THREE.BoxGeometry]
+    cache.delete(clave)
+    vieja.dispose()
+  }
   return g
 }
 

@@ -28,7 +28,9 @@ function aCm(valor: string, unidad?: string): number {
   return Math.round(n)
 }
 
-const NUM = String.raw`(\d+(?:[.,]\d+)?)\s*(mts?|m|cm)?\b`
+// La unidad es opcional y no puede ser el comienzo de otra palabra ("60 mesada"); sí puede
+// seguir una "x" pegada ("80x60").
+const NUM = String.raw`(\d+(?:[.,]\d+)?)\s*(mts?|m|cm)?(?![a-wyz0-9])`
 
 function medidasExplicitas(texto: string) {
   const t = normalizar(texto)
@@ -53,9 +55,15 @@ function par(nombre: string): [number, number] | null {
   return r ? [aCm(r[1], r[2]), aCm(r[3], r[4])] : null
 }
 
+/** Primer número que es una medida: se saltean cantidades ("2 puertas", "3 cajones"). */
 function primerNumero(nombre: string): number | null {
-  const r = new RegExp(NUM).exec(normalizar(nombre))
-  return r ? aCm(r[1], r[2]) : null
+  const t = normalizar(nombre)
+  for (const m of t.matchAll(new RegExp(NUM, 'g'))) {
+    const resto = t.slice(m.index! + m[0].length)
+    if (!m[2] && /^\s*(puertas?|cajon(es)?|hornallas?|estantes?|hojas?|macetas?)\b/.test(resto)) continue
+    return aCm(m[1], m[2])
+  }
+  return null
 }
 
 function contarPuertas(n: string): number | null {
@@ -123,7 +131,8 @@ export function deducirProducto(
   const expl = medidasExplicitas(datosUtiles ?? '')
 
   // Combos: "Combo 1,20 (Bajo mesada, alacena...)" / "Bajo Mesada 1,60 Mt Y Alacena 3 Mt"
-  if (n.startsWith('combo')) {
+  // Combo: empieza con "combo" o nombra un bajo mesada y una alacena juntos.
+  if (n.startsWith('combo') || /bajo mesada.+\b(y|mas|con)\b.+alacena|bajo mesada.+\+.+alacena/.test(n)) {
     const rBajo = new RegExp(`bajo mesada\\s*${NUM}`).exec(n)
     const rAlac = new RegExp(`alacena\\s*${NUM}`).exec(n)
     const base = primerNumero(n.replace(/^combo\s*/, '')) ?? 100

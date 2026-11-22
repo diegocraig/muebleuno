@@ -1,9 +1,10 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import { listarElectros } from '@/lib/render/servidor'
+import { exigirAdmin, listarElectros } from '@/lib/render/servidor'
 import ElectrosAdmin from './ElectrosAdmin'
 
 export default async function ElectrosPage() {
+  await exigirAdmin('/render/electrodomesticos')
   const electros = await listarElectros()
   return (
     <div className="min-h-screen bg-gris-fondo">

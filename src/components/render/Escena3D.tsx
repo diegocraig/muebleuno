@@ -1,13 +1,13 @@
 'use client'
-import { useEffect, useMemo, useRef } from 'react'
+import { memo, useEffect, useMemo, useRef } from 'react'
 import { Canvas, useThree, type ThreeEvent } from '@react-three/fiber'
 import { Html, Line, OrbitControls, OrthographicCamera, PerspectiveCamera } from '@react-three/drei'
 import * as THREE from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
-import type { Item, Pared } from '@/lib/render/tipos'
+import type { Item, Pared, Ubicacion } from '@/lib/render/tipos'
 import { conflictos, huecos, largoPared, medidas, transformar } from '@/lib/render/escena'
 import { M } from './geometria'
-import { fijarAnisotropia } from './texturas'
+import { fijarAnisotropia, alCargarTextura } from './texturas'
 import { useRender } from './store'
 import Habitacion from './Habitacion'
 import Luces from './Luces'
@@ -18,6 +18,20 @@ import Deco3D from './Deco3D'
 // ─── Captura de imagen (la usa la barra de herramientas) ────────────────────
 
 export const capturador: { fn: ((escala?: number, tipo?: 'png' | 'jpeg', calidad?: number) => string) | null } = { fn: null }
+
+/**
+ * El Canvas dibuja a demanda (no a 60 fps fijos): pedimos un cuadro cuando
+ * cambia cualquier cosa del estado o termina de cargar una textura.
+ */
+function Refrescar() {
+  const invalidate = useThree(s => s.invalidate)
+  useEffect(() => {
+    alCargarTextura.fn = () => invalidate()
+    const baja = useRender.subscribe(() => invalidate())
+    return () => { baja(); alCargarTextura.fn = null }
+  }, [invalidate])
+  return null
+}
 
 function Capturador() {
   const { gl, scene, camera, size } = useThree()
@@ -46,8 +60,15 @@ function Camaras() {
   const version = useRender(s => s.camaraVersion)
   const arrastrando = useRender(s => s.arrastrando)
   const amb = useRender(s => s.escena.ambiente)
+  // Vista de frente: mira la pared del mueble seleccionado, o la pared donde se está agregando.
+  const paredVista = useRender(s => {
+    const u: Ubicacion = s.escena.items.find(i => i.id === s.seleccion)?.ubicacion ?? s.paredDestino
+    return u !== 'libre' && s.escena.ambiente.paredes[u] ? u : 'fondo'
+  })
   const controles = useRef<OrbitControlsImpl>(null)
-  const { size } = useThree()
+  const size = useThree(s => s.size)
+  const tam = useRef(size)
+  tam.current = size
   const camaraActiva = useThree(s => s.camera)
   const W = amb.ancho * M, D = amb.largo * M, H = amb.alto * M
 
@@ -60,17 +81,25 @@ function Camaras() {
       cam.position.set(W * 0.5 + W * 0.35, H * 1.15, D + Math.max(W, D) * 0.95)
       c.target.set(W / 2, 0.9, D / 2)
     } else if (camara === 'frente') {
-      cam.position.set(W / 2, 1.45, D - 0.25)
-      c.target.set(W / 2, 1.2, 0)
+      // Parado contra la pared opuesta (como mucho a 3,2 m), mirando la pared elegida.
+      const dist = (largo: number) => Math.min(largo - 0.25, 3.2)
+      if (paredVista === 'fondo') { cam.position.set(W / 2, 1.45, dist(D)); c.target.set(W / 2, 1.2, 0) }
+      else if (paredVista === 'frente') { cam.position.set(W / 2, 1.45, D - dist(D)); c.target.set(W / 2, 1.2, D) }
+      else if (paredVista === 'izq') { cam.position.set(dist(W), 1.45, D / 2); c.target.set(0, 1.2, D / 2) }
+      else { cam.position.set(W - dist(W), 1.45, D / 2); c.target.set(W, 1.2, D / 2) }
     } else {
       cam.position.set(W / 2, 12, D / 2 + 0.001)
       c.target.set(W / 2, 0, D / 2)
       const ortho = cam as THREE.OrthographicCamera
-      ortho.zoom = Math.min(size.width / (W + 1.2), size.height / (D + 1.2))
+      const t = tam.current
+      ortho.zoom = Math.min(t.width / (W + 1.2), t.height / (D + 1.2))
       ortho.updateProjectionMatrix()
     }
     c.update()
-  }, [camara, camaraActiva, version, W, D, H, size.width, size.height])
+  // Solo se reencuadra al cambiar de vista, abrir otro proyecto o tocar un botón de vista:
+  // ni seleccionar un mueble, ni cambiar medidas, ni abrir/cerrar paneles mueven la cámara.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [camara, camaraActiva, version])
 
   return (
     <>
@@ -108,8 +137,9 @@ function planoArrastre(it: Item, W: number, D: number): THREE.Plane {
 
 const coordPared = (u: Pared, v: THREE.Vector3) => (u === 'fondo' || u === 'frente' ? v.x : v.z) / M
 
-function ItemNodo({ it, seleccionado, conflicto }: { it: Item; seleccionado: boolean; conflicto: boolean }) {
-  const esc = useRender(s => s.escena)
+const ItemNodo = memo(function ItemNodo({ it, seleccionado, conflicto }: { it: Item; seleccionado: boolean; conflicto: boolean }) {
+  const ambiente = useRender(s => s.escena.ambiente)
+  const esc = useMemo(() => ({ ambiente }), [ambiente])
   const seleccionar = useRender(s => s.seleccionar)
   const moverItem = useRender(s => s.moverItem)
   const moverLibre = useRender(s => s.moverLibre)
@@ -120,6 +150,9 @@ function ItemNodo({ it, seleccionado, conflicto }: { it: Item; seleccionado: boo
   const arrastre = useRef<{ plano: THREE.Plane; offset: THREE.Vector2; inicio: THREE.Vector2; movido: boolean; id: number } | null>(null)
   const { cx, cz, rot } = transformar(it, esc)
   const { ancho, alto, prof } = medidas(it)
+
+  // Si el mueble se borra o se deshace mientras se arrastra, no dejar la cámara trabada.
+  useEffect(() => () => { if (arrastre.current?.movido) useRender.getState().setArrastrando(false) }, [])
 
   const onDown = (e: ThreeEvent<PointerEvent>) => {
     if (e.button !== 0) return
@@ -157,7 +190,15 @@ function ItemNodo({ it, seleccionado, conflicto }: { it: Item; seleccionado: boo
     setArrastrando(false)
   }
 
-  const borde = useMemo(() => new THREE.EdgesGeometry(new THREE.BoxGeometry(ancho * M + 0.01, alto * M + 0.01, prof * M + 0.01)), [ancho, alto, prof])
+  const marcado = seleccionado || conflicto
+  const borde = useMemo(() => {
+    if (!marcado) return null
+    const caja = new THREE.BoxGeometry(ancho * M + 0.01, alto * M + 0.01, prof * M + 0.01)
+    const g = new THREE.EdgesGeometry(caja)
+    caja.dispose()
+    return g
+  }, [marcado, ancho, alto, prof])
+  useEffect(() => () => borde?.dispose(), [borde])
   const esq = it.modulo?.tipo.startsWith('esquinero')
 
   return (
@@ -165,7 +206,7 @@ function ItemNodo({ it, seleccionado, conflicto }: { it: Item; seleccionado: boo
       <group onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}>
         {it.modulo ? <Mueble3D it={it} /> : it.deco ? <Deco3D it={it} /> : <Electro3D it={it} />}
       </group>
-      {(seleccionado || conflicto) && !esq && (
+      {borde && !esq && (
         <lineSegments geometry={borde} position={[0, (alto * M) / 2, 0]}>
           <lineBasicMaterial color={conflicto ? '#f59e0b' : '#C0272D'} depthTest={false} transparent opacity={0.9} />
         </lineSegments>
@@ -178,13 +219,13 @@ function ItemNodo({ it, seleccionado, conflicto }: { it: Item; seleccionado: boo
       )}
     </group>
   )
-}
+})
 
 // ─── Cotas ──────────────────────────────────────────────────────────────────
 
 function Etiqueta({ p, texto, fuerte = false }: { p: [number, number, number]; texto: string; fuerte?: boolean }) {
   return (
-    <Html position={p} center zIndexRange={[20, 0]} style={{ pointerEvents: 'none' }}>
+    <Html position={p} center zIndexRange={[5, 0]} style={{ pointerEvents: 'none' }}>
       <span className={`whitespace-nowrap rounded px-1.5 py-0.5 text-[11px] font-semibold shadow ${fuerte ? 'bg-rojo-principal text-white' : 'bg-white/90 text-gris-oscuro'}`}>{texto}</span>
     </Html>
   )
@@ -287,6 +328,7 @@ export default function Escena3D() {
     <Canvas
       shadows={sombras ? 'soft' : false}
       dpr={alta ? [1, 2] : [1, 1.5]}
+      frameloop="demand"
       gl={{ preserveDrawingBuffer: true, antialias: true }}
       onPointerMissed={e => { if (e.button === 0) seleccionar(null) }}
       style={{ background: fondo }}
@@ -296,6 +338,7 @@ export default function Escena3D() {
       <Luces />
       <Mundo />
       <Capturador />
+      <Refrescar />
     </Canvas>
   )
 }

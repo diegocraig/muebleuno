@@ -235,6 +235,22 @@ const CON_RELIEVE: TexturaId[] = ['porcellanato', 'ceramico', 'subway', 'damero'
 const cacheTex = new Map<string, THREE.Texture>()
 const cacheImg = new Map<string, THREE.Texture>()
 const cacheMat = new Map<string, THREE.MeshStandardMaterial>()
+
+/** El Canvas dibuja a demanda: se avisa cuando una imagen termina de cargar. */
+export const alCargarTextura: { fn: (() => void) | null } = { fn: null }
+
+/**
+ * Las cachés se acotan (al arrastrar un selector de color se genera una
+ * entrada por cada tono intermedio). Liberar algo que todavía se usa es
+ * seguro: three lo vuelve a subir a la GPU en el próximo cuadro.
+ */
+function acotar<T extends { dispose(): void }>(cache: Map<string, T>, max: number) {
+  while (cache.size > max) {
+    const [clave, valor] = cache.entries().next().value as [string, T]
+    cache.delete(clave)
+    valor.dispose()
+  }
+}
 let anisotropia = 8
 export function fijarAnisotropia(n: number) { anisotropia = n }
 
@@ -251,13 +267,14 @@ function texturaCanvas(id: TexturaId, color: string): THREE.Texture {
   tex.colorSpace = THREE.SRGBColorSpace
   tex.anisotropy = anisotropia
   cacheTex.set(clave, tex)
+  acotar(cacheTex, 80)
   return tex
 }
 
 function texturaImagen(url: string): THREE.Texture {
   const hit = cacheImg.get(url)
   if (hit) return hit
-  const tex = new THREE.TextureLoader().load(url)
+  const tex = new THREE.TextureLoader().load(url, () => alCargarTextura.fn?.())
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping
   tex.colorSpace = THREE.SRGBColorSpace
   tex.anisotropy = anisotropia
@@ -269,31 +286,49 @@ function texturaImagen(url: string): THREE.Texture {
  * Material compartido para una definición. Se cachea por clave: dos muebles
  * con el mismo acabado usan el mismo material (y la misma textura en GPU).
  */
-export function material(def: MatDef): THREE.MeshStandardMaterial {
-  const clave = `${def.textura}|${def.color}|${def.imagen ?? ''}|${def.escala}|${def.rugosidad}|${def.metalico}`
+export function material(def: MatDef, sombraDoble = false): THREE.MeshStandardMaterial {
+  const clave = `${def.textura}|${def.color}|${def.imagen ?? ''}|${def.escala}|${def.rugosidad}|${def.metalico}|${sombraDoble ? 1 : 0}`
   const hit = cacheMat.get(clave)
   if (hit) return hit
-  const base = def.imagen ? texturaImagen(def.imagen) : texturaCanvas(def.textura, def.color)
-  const map = base.clone()
-  map.needsUpdate = true
-  const rep = 1 / Math.max(0.05, def.escala)
-  map.repeat.set(rep, rep)
-  const mat = new THREE.MeshStandardMaterial({
-    map,
-    roughness: def.rugosidad,
-    metalness: def.metalico,
-  })
-  if (!def.imagen && CON_RELIEVE.includes(def.textura)) {
-    mat.bumpMap = map
-    mat.bumpScale = def.textura === 'roble' ? 0.6 : 2.2
+  const mat = new THREE.MeshStandardMaterial({ roughness: def.rugosidad, metalness: def.metalico })
+  if (!def.imagen && def.textura === 'liso') {
+    // Color pleno: sin textura (no hace falta generar un canvas por cada tono).
+    mat.color.set(def.color)
+  } else {
+    const base = def.imagen ? texturaImagen(def.imagen) : texturaCanvas(def.textura, def.color)
+    const map = base.clone()
+    map.needsUpdate = true
+    const rep = 1 / Math.max(0.05, def.escala)
+    map.repeat.set(rep, rep)
+    mat.map = map
+    if (!def.imagen && CON_RELIEVE.includes(def.textura)) {
+      mat.bumpMap = map
+      mat.bumpScale = def.textura === 'roble' ? 0.6 : 2.2
+    }
   }
+  // Paredes y techo son planos de una cara: igual tienen que proyectar sombra.
+  if (sombraDoble) mat.shadowSide = THREE.DoubleSide
   cacheMat.set(clave, mat)
+  while (cacheMat.size > 120) {
+    const [k, m] = cacheMat.entries().next().value as [string, THREE.MeshStandardMaterial]
+    cacheMat.delete(k)
+    m.map?.dispose()
+    m.dispose()
+  }
   return mat
 }
 
 /** Muestra de la textura para los selectores del panel (data URL chica). */
 export function miniatura(def: MatDef, tam = 64): string {
   if (def.imagen) return def.imagen
+  if (def.textura === 'liso') {
+    const c = document.createElement('canvas')
+    c.width = c.height = 8
+    const ctx = c.getContext('2d')!
+    ctx.fillStyle = def.color
+    ctx.fillRect(0, 0, 8, 8)
+    return c.toDataURL()
+  }
   const tex = texturaCanvas(def.textura, def.color)
   const src = tex.image as HTMLCanvasElement
   const c = document.createElement('canvas')
@@ -399,7 +434,7 @@ export function texturaFoto(url: string): THREE.Texture {
   const k = `foto|${url}`
   const hit = cacheArte.get(k)
   if (hit) return hit
-  const tex = new THREE.TextureLoader().load(url)
+  const tex = new THREE.TextureLoader().load(url, () => alCargarTextura.fn?.())
   tex.colorSpace = THREE.SRGBColorSpace
   cacheArte.set(k, tex)
   return tex

@@ -1,9 +1,20 @@
 import { NextResponse } from 'next/server'
+import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/session'
 import { deducirProducto } from './medidas'
 import { ELECTROS_BASE } from './electrosBase'
 import type { DefModulo, ElectroCatalogo, ProductoCatalogo, TipoEnvioOpcion } from './tipos'
+
+/**
+ * Guard para páginas: el layout de /render ya lo chequea, pero Next no vuelve a
+ * ejecutar el layout en navegaciones internas, así que cada página lo repite.
+ */
+export async function exigirAdmin(volverA = '/render') {
+  const s = await getSession()
+  if (!s || s.rol !== 'admin') redirect(`/admin/login?next=${encodeURIComponent(volverA)}`)
+  return s
+}
 
 /** Solo el admin del panel puede usar /render y sus APIs. */
 export async function adminORespuesta() {

@@ -1,6 +1,10 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
+import { useRender } from './store'
+
+/** Guarda un paso de deshacer justo antes de empezar a mover un control continuo. */
+const marcar = () => useRender.getState().marcarHistoria()
 
 // Controles chicos con la estética del panel de muebleuno (grises + rojo).
 
@@ -61,9 +65,16 @@ export function Deslizador({ valor, onCambio, min, max, paso = 0.01, formato }: 
 }) {
   return (
     <span className="flex items-center gap-2">
-      <input type="range" min={min} max={max} step={paso} value={valor} onChange={e => onCambio(parseFloat(e.target.value))} className="w-28 accent-rojo-principal" />
+      <input type="range" min={min} max={max} step={paso} value={valor} onPointerDown={marcar} onKeyDown={marcar} onChange={e => onCambio(parseFloat(e.target.value))} className="w-28 accent-rojo-principal" />
       <span className="w-12 text-right text-xs tabular-nums text-gris-medio">{formato ? formato(valor) : valor}</span>
     </span>
+  )
+}
+
+/** Selector de color: un solo paso de deshacer por elección, no uno por cada tono intermedio. */
+export function Color({ valor, onCambio }: { valor: string; onCambio: (v: string) => void }) {
+  return (
+    <input type="color" value={valor} onPointerDown={marcar} onKeyDown={marcar} onChange={e => onCambio(e.target.value)} className="h-7 w-12 cursor-pointer rounded border border-gray-200" />
   )
 }
 
