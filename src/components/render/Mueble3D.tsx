@@ -243,7 +243,8 @@ function Hoja({ x0, x1, y0, y1, bisagra, ctx, vidrio = false, marco, tiradorEn, 
   // Marco de la puerta vidriada: en productos, de la placa del frente o de aluminio;
   // en módulos a medida, del color del tirador (como siempre).
   const matMarco = producto ? (marco === 'aluminio' ? MAT_MANIJA.aluminio : (mat ?? ctx.frente)) : ctx.tirador.mat
-  const anchoMarco = producto && marco !== 'aluminio' ? 0.05 : 0.045
+  // Productos: marco de placa de 5 cm o perfil de aluminio fino (como en las fotos).
+  const anchoMarco = producto ? (marco === 'aluminio' ? 0.022 : 0.05) : 0.045
   return (
     <group position={pivote}>
       <group ref={grupo}>
@@ -405,7 +406,27 @@ function celda(out: React.ReactNode[], c: Columna, r: Rect, d: number, ctx: Ctx,
         out.push(<Hoja key={k} x0={x0} x1={x1} y0={y0} y1={y1} bisagra={bisagra} ctx={ctx} vidrio={vidrio} marco={c.marco} tiradorEn={tiradorEn} mat={mat}
           manija={manijaDe('puerta', x0, x1, y0, y1, bisagra, ctx, c.tirador)} />)
       }
-      estantesInternos(H > 1 ? (vidrio ? 4 : 3) : H > 0.45 ? 1 : 0)
+      const ci = c.cajonesInternos
+      if (ci && ci.cantidad > 0) {
+        // Cajones interiores: retirados detrás de la puerta, sin manija, con su estante encima.
+        const hc = Math.min(H * 0.8, ci.alto * M)
+        const hh = hc / ci.cantidad
+        const cx0 = x0 + T / 2 + 0.006, cx1 = x1 - T / 2 - 0.006
+        out.push(
+          <group key={k + 'ci'} position={[0, 0, -(T + 0.015)]}>
+            {Array.from({ length: ci.cantidad }, (_, j) => (
+              <Cajon key={j} x0={cx0} x1={cx1} y0={y0 + hc - (j + 1) * hh} y1={y0 + hc - j * hh} prof={d - T - 0.03} ctx={ctx} indice={j} mat={ctx.acento} manija={null} />
+            ))}
+          </group>,
+        )
+        // Estantes (del color de acento, como los cajones) cada ~26 cm.
+        out.push(<Pieza key={k + 'cie'} w={cw - T} h={T} d={dInt - 0.02} p={[(x0 + x1) / 2, y0 + hc + T / 2, -dInt / 2 - 0.01]} mat={ctx.acento} sombra={false} />)
+        const resto = H - hc - T
+        const n = Math.max(0, Math.round(resto / 0.26) - 1)
+        for (let j = 1; j <= n; j++) out.push(<Pieza key={`${k}ci${j}`} w={cw - T} h={T} d={dInt - 0.02} p={[(x0 + x1) / 2, y0 + hc + T + (resto * j) / (n + 1), -dInt / 2 - 0.01]} mat={ctx.acento} sombra={false} />)
+      } else {
+        estantesInternos(H > 1 ? (vidrio ? 4 : 3) : H > 0.45 ? 1 : 0)
+      }
       break
     }
     case 'rebatible':
@@ -606,7 +627,9 @@ export default function Mueble3D({ it }: { it: Item }) {
   const conZocalo = def.tipo === 'bajo' || def.tipo === 'esquinero-bajo' || def.tipo === 'alto' ? est.zocalo * M : 0
   // Acento del producto (recuadro de mármol, frentes rústicos): es parte del diseño.
   const acentoMat = def.acento ? preset(def.acento) : frenteDef
-  const conInterior = def.tirador !== undefined && (hojas(def.columnas).some(c => ABIERTOS.has(c.tipo)) || !!def.columnasB?.some(c => hojas([c]).some(x => ABIERTOS.has(x.tipo))))
+  // Con huecos a la vista (o cajones interiores) cada celda lleva sus propias divisiones y estantes.
+  const especial = (x: Columna) => ABIERTOS.has(x.tipo) || !!x.cajonesInternos
+  const conInterior = def.tirador !== undefined && (hojas(def.columnas).some(especial) || hojas(def.columnasB ?? []).some(especial))
   const ctx: Ctx = useMemo(() => ({
     frente: material(frenteDef),
     cuerpo: material(cuerpoDef),

@@ -125,7 +125,9 @@ export const FICHAS: Record<number, Ficha> = {
     { tirador: 'ninguno', frente: 'gris-grafito', cuerpo: 'gris-grafito', acento: 'rustico' }),
   81: d([F(undefined, K(115, V(undefined, { marco: 'aluminio' }), V(undefined, { marco: 'aluminio' })), K(undefined, P(undefined, { acento: true }), P(undefined, { acento: true })))],
     { frente: 'gris-grafito', cuerpo: 'gris-grafito', acento: 'rustico' }),
-  94: d([V(undefined, { marco: 'aluminio' }), V(undefined, { marco: 'aluminio' })], { tirador: 'ninguno', patas: 'aluminio', cuerpo: 'roble-natural' }),
+  // vidriado 1,50 x 60: dos puertas de vidrio con marco de aluminio, estantes y dos cajones internos grises por lado.
+  94: d([V(undefined, { marco: 'aluminio', cajonesInternos: { cantidad: 2, alto: 38 } }), V(undefined, { marco: 'aluminio', cajonesInternos: { cantidad: 2, alto: 38 } })],
+    { tirador: 'ninguno', patas: 'aluminio', cuerpo: 'roble-natural', embutido: true, acento: 'gris-humo' }),
   101: d([V(50), F(undefined, H(3, { alto: 112 }), C(undefined, 3, [1, 1, 1]))], { cuerpo: 'rustico' }),
   12: d([F(undefined, H(0, { alto: 45 }), K(undefined, V(), V()))]),     // portamicroondas vidriado 130 x 60
   45: d([F(undefined, H(1, { alto: 45 }), V())]),                        // vidriado 130 x 30 puerta y estante

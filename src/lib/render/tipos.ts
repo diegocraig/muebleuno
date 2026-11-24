@@ -60,6 +60,8 @@ export interface Columna {
   marco?: 'frente' | 'aluminio'
   /** Usa el color de acento del producto (fondo del recuadro, frentes de otro color). */
   acento?: boolean
+  /** Cajones interiores detrás de una puerta (se ven a través del vidrio), en el color de acento. */
+  cajonesInternos?: { cantidad: number; alto: number }
   tirador?: PosTirador
 }
 
