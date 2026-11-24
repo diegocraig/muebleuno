@@ -7,8 +7,8 @@ import { useRender } from './store'
 /** Totales del presupuesto con los precios vigentes del catálogo. */
 export function calcularPresupuesto() {
   const { escena, presupuesto, catalogo, envios } = useRender.getState()
-  const precios = new Map(catalogo.map(p => [p.id, p.precio]))
-  const lineas = lineasPresupuesto(escena, precios, presupuesto)
+  const refs = new Map(catalogo.map(p => [p.id, { precio: p.precio, def: p.def, combo: p.combo }]))
+  const lineas = lineasPresupuesto(escena, refs, presupuesto)
   const envio = envios.find(e => e.id === presupuesto.tipoEnvioId)?.costo ?? 0
   const metros = metrosMesada(escena)
   return { lineas, metros, totales: totalesPresupuesto(lineas, presupuesto, metros, envio) }

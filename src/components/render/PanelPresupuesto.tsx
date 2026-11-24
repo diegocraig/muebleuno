@@ -67,7 +67,15 @@ export default function PanelPresupuesto() {
           {lineas.filter(l => l.tipo !== 'electro').map(l => (
             <li key={l.clave} className="flex items-start justify-between gap-2 py-1.5">
               <span className="min-w-0"><span className="font-semibold text-gris-oscuro">{l.cantidad}×</span> {l.nombre}
-                {l.precio === 0 && <span className="ml-1 text-xs text-amber-600">(sin precio)</span>}</span>
+                {l.precio === 0 && <span className="ml-1 text-xs text-amber-600">(sin precio)</span>}
+                {(l.recargoMedida > 0 || l.recargoColor > 0) && (
+                  <span className="block text-xs text-gris-medio">
+                    Base {formatPrice(l.precioBase)}
+                    {l.recargoMedida > 0 && <> · medida especial +15% {formatPrice(l.recargoMedida)}</>}
+                    {l.recargoColor > 0 && <> · color a elección +30% {formatPrice(l.recargoColor)}</>}
+                    {' '}= {formatPrice(l.precio)} c/u
+                  </span>
+                )}</span>
               <span className="shrink-0 tabular-nums">{formatPrice(l.subtotal)}</span>
             </li>
           ))}

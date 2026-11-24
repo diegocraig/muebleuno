@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { adminORespuesta } from '@/lib/render/servidor'
+import { adminORespuesta, referenciasProductos } from '@/lib/render/servidor'
 import type { LineaPedido } from '@/lib/coloresServer'
-import { lineasPresupuesto, metrosMesada, normalizarEscena, normalizarPresupuesto, totalesPresupuesto } from '@/lib/render/escena'
+import { lineasPresupuesto, metrosMesada, normalizarEscena, normalizarPresupuesto, textoRecargos, totalesPresupuesto } from '@/lib/render/escena'
 import { formatPrice } from '@/lib/utils'
 import { enviarReportePedido } from '@/lib/mail'
 import type { Escena } from '@/lib/render/tipos'
@@ -50,15 +50,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: `Estos productos ya no están activos en el catálogo: ${faltantes.join(', ')}. Sacalos del proyecto o reactivalos.` }, { status: 409 })
   }
   const primeraImagen = (raw: string) => { try { const a = JSON.parse(raw); return Array.isArray(a) && typeof a[0] === 'string' ? a[0] as string : undefined } catch { return undefined } }
-  const res: { lineas: LineaPedido[] } = {
-    lineas: productos.map(p => ({
-      productoId: p.id, cantidad: cantidades.get(p.id)!, nombre: p.nombre, precio: p.precioOferta ?? p.precio, imagen: primeraImagen(p.imagenes),
-    })),
-  }
   const conColores = productos.filter(p => p._count.colores > 0).map(p => p.nombre)
 
-  const precios = new Map(res.lineas.map(l => [l.productoId, l.precio]))
-  const lineas = lineasPresupuesto(esc, precios, pres)
+  // Precio vigente y medidas originales desde la base: los adicionales por medida
+  // especial (15 %) y color a elección (30 %) se recalculan acá, no se toman del navegador.
+  const refs = await referenciasProductos([...cantidades.keys()])
+  const lineas = lineasPresupuesto(esc, refs, pres)
+  const imagenes = new Map(productos.map(p => [p.id, primeraImagen(p.imagenes)]))
+  const nombres = new Map(productos.map(p => [p.id, p.nombre]))
+  const res: { lineas: LineaPedido[] } = {
+    lineas: lineas.filter(l => l.tipo === 'producto' && l.productoId).map(l => {
+      const extra = textoRecargos(l)
+      const nombre = nombres.get(l.productoId!) ?? l.nombre
+      return { productoId: l.productoId!, cantidad: l.cantidad, nombre: extra ? `${nombre} (${extra})` : nombre, precio: l.precio, imagen: imagenes.get(l.productoId!) }
+    }),
+  }
   let costoEnvio = 0
   let tipoEnvioId: number | null = null
   if (pres.tipoEnvioId) {
@@ -69,6 +75,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const t = totalesPresupuesto(lineas, pres, metros, costoEnvio)
 
   const notas: string[] = [`Generado desde el configurador 3D (/render) · proyecto #${proyecto.id} "${proyecto.nombre}".`]
+  for (const l of lineas.filter(l => l.tipo === 'producto' && (l.recargoMedida || l.recargoColor))) {
+    const partes = [`base ${formatPrice(l.precioBase)}`]
+    if (l.recargoMedida) partes.push(`+15% medida especial ${formatPrice(l.recargoMedida)}`)
+    if (l.recargoColor) partes.push(`+30% color a elección ${formatPrice(l.recargoColor)}`)
+    notas.push(`${l.cantidad} × ${l.nombre}: ${partes.join(' ')} = ${formatPrice(l.precio)} c/u`)
+  }
   if (t.mesada) notas.push(`Mesada: ${metros} m × ${formatPrice(pres.precioMesadaMl)} = ${formatPrice(t.mesada)}`)
   for (const e of pres.extras) notas.push(`${e.concepto}: ${e.cantidad} × ${formatPrice(e.precioUnitario)}`)
   for (const l of lineas.filter(l => l.tipo !== 'producto' && l.incluido)) notas.push(`${l.nombre}: ${l.cantidad} × ${formatPrice(l.precio)}`)

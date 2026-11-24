@@ -1,8 +1,8 @@
 import type { MatDef, GrupoMaterial, TexturaId } from './tipos'
 
 // Biblioteca de materiales. Los colores de melamina son aproximaciones de las
-// placas que usa la fábrica (Paraíso, Jade, Gris basalto...): se pueden afinar
-// desde el panel de Materiales y guardar en el proyecto.
+// placas que usa la fábrica: Paraíso, Jade y Gris basalto se calibraron con las
+// fotos del catálogo (nov 2026). Se pueden afinar desde el panel de Materiales.
 
 const m = (nombre: string, color: string, textura: TexturaId, escala = 0.6, rugosidad = 0.6, metalico = 0): MatDef =>
   ({ nombre, color, textura, escala, rugosidad, metalico })
@@ -12,20 +12,23 @@ export const MATERIALES_PRESET: Record<string, MatDef> = {
   blanco: m('Blanco', '#f2f1ec', 'liso', 1, 0.45),
   'blanco-brillo': m('Blanco alto brillo', '#f7f7f5', 'liso', 1, 0.12),
   negro: m('Negro', '#232325', 'liso', 1, 0.5),
-  'gris-basalto': m('Gris basalto', '#55585b', 'lino', 0.4, 0.55),
+  'gris-basalto': m('Gris basalto', '#7b7f85', 'liso', 1, 0.55),
   'gris-humo': m('Gris humo', '#8d8f8e', 'liso', 1, 0.5),
-  jade: m('Jade', '#8fa497', 'liso', 1, 0.5),
+  jade: m('Jade', '#93a98e', 'liso', 1, 0.5),
   'verde-oliva': m('Verde oliva', '#6f7552', 'liso', 1, 0.5),
   'azul-petroleo': m('Azul petróleo', '#2f4b56', 'liso', 1, 0.5),
   terracota: m('Terracota', '#b86b4b', 'liso', 1, 0.55),
   arena: m('Arena', '#d8cbb3', 'lino', 0.4, 0.6),
   // Melaminas madera
-  paraiso: m('Paraíso', '#c9a77e', 'madera-clara', 0.9, 0.55),
+  paraiso: m('Paraíso', '#b48c64', 'madera-clara', 0.9, 0.55),
   'roble-natural': m('Roble natural', '#c8a172', 'roble', 0.9, 0.55),
   'roble-gris': m('Roble gris', '#a69c90', 'roble', 0.9, 0.55),
   nogal: m('Nogal', '#7a5639', 'madera-oscura', 0.9, 0.5),
   'cedro-hayas': m('Haya', '#d6b48c', 'madera-media', 0.9, 0.55),
   wengue: m('Wengué', '#4a3426', 'madera-oscura', 0.8, 0.5),
+  rustico: m('Rústico', '#5e3d26', 'madera-oscura', 0.7, 0.6),
+  'gris-grafito': m('Gris grafito', '#3f4246', 'lino', 0.4, 0.55),
+  'marmol-negro': m('Mármol negro', '#26272a', 'marmol', 0.8, 0.3),
   // Mesadas
   'granito-gris-mara': m('Granito Gris Mara', '#9a9a98', 'granito', 0.5, 0.25),
   'granito-negro': m('Granito Negro Absoluto', '#2a2a2b', 'granito-oscuro', 0.5, 0.15),
@@ -54,8 +57,8 @@ export const MATERIALES_PRESET: Record<string, MatDef> = {
 }
 
 export const PRESETS_POR_GRUPO: Record<GrupoMaterial, string[]> = {
-  frentes: ['blanco', 'blanco-brillo', 'paraiso', 'jade', 'gris-basalto', 'gris-humo', 'negro', 'roble-natural', 'roble-gris', 'nogal', 'cedro-hayas', 'wengue', 'verde-oliva', 'azul-petroleo', 'terracota', 'arena'],
-  cuerpos: ['blanco', 'paraiso', 'gris-basalto', 'negro', 'roble-natural', 'nogal', 'arena'],
+  frentes: ['blanco', 'blanco-brillo', 'paraiso', 'jade', 'gris-basalto', 'gris-humo', 'negro', 'roble-natural', 'roble-gris', 'nogal', 'cedro-hayas', 'wengue', 'verde-oliva', 'azul-petroleo', 'terracota', 'arena', 'rustico', 'gris-grafito'],
+  cuerpos: ['blanco', 'paraiso', 'gris-basalto', 'negro', 'roble-natural', 'nogal', 'arena', 'rustico', 'gris-grafito'],
   mesada: ['granito-gris-mara', 'granito-negro', 'granito-blanco', 'marmol-carrara', 'cuarzo-blanco', 'mesada-madera', 'microcemento', 'acero-inox'],
   zocalo: ['acero-inox', 'negro', 'blanco', 'gris-basalto', 'paraiso'],
   salpicadero: ['subway', 'subway-verde', 'hexagonal', 'granito-gris-mara', 'granito-negro', 'marmol-carrara', 'ladrillo', 'pintura-blanca', 'microcemento'],
@@ -87,6 +90,12 @@ export const TEXTURAS: { id: TexturaId; nombre: string }[] = [
 
 export function preset(id: string): MatDef {
   return { ...(MATERIALES_PRESET[id] ?? MATERIALES_PRESET.blanco) }
+}
+
+/** Placa de la biblioteca con ese nombre (null si es un color personalizado o una foto). */
+export function presetPorNombre(nombre: string): MatDef | null {
+  const id = Object.keys(MATERIALES_PRESET).find(k => MATERIALES_PRESET[k].nombre === nombre)
+  return id ? preset(id) : null
 }
 
 /** Busca colores de melamina en el nombre del producto ("Gris basalto y Paraíso"). */

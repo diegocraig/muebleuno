@@ -5,6 +5,7 @@ import { getSession } from '@/lib/session'
 import { deducirProducto } from './medidas'
 import { ELECTROS_BASE } from './electrosBase'
 import type { DefModulo, ElectroCatalogo, ProductoCatalogo, TipoEnvioOpcion } from './tipos'
+import type { RefProducto } from './escena'
 
 /**
  * Guard para páginas: el layout de /render ya lo chequea, pero Next no vuelve a
@@ -32,6 +33,29 @@ function primeraImagen(raw: string): string | null {
   }
 }
 
+/** Solo las medidas del ajuste guardado: el diseño del frente sale siempre de la ficha del producto. */
+function aplicarAjuste(def: DefModulo | null, ajuste: string | undefined): DefModulo | null {
+  if (!ajuste || !def) return def
+  try {
+    const a = JSON.parse(ajuste) as Partial<DefModulo>
+    const num = (v: unknown) => (typeof v === 'number' && v > 0 && v <= 400 ? v : undefined)
+    return {
+      ...def,
+      ...(num(a.ancho) ? { ancho: a.ancho } : {}),
+      ...(num(a.alto) ? { alto: a.alto } : {}),
+      ...(num(a.profundidad) ? { profundidad: a.profundidad } : {}),
+    }
+  } catch { return def } // ajuste corrupto: se ignora
+}
+
+type FilaProducto = { id: number; nombre: string; datosUtiles: string | null }
+
+/** Definición 3D vigente de un producto (ficha + medidas del nombre + ajuste guardado). */
+function definir(p: FilaProducto, ajuste: string | undefined) {
+  const deducido = deducirProducto(p.nombre, p.datosUtiles, p.id)
+  return { ...deducido, def: aplicarAjuste(deducido.def, ajuste) }
+}
+
 /** Productos de la categoría Cocina con su definición 3D (deducida o ajustada). */
 export async function catalogoCocina(): Promise<ProductoCatalogo[]> {
   const cat = await prisma.categoria.findFirst({ where: { slug: { contains: 'cocina' } } })
@@ -44,12 +68,8 @@ export async function catalogoCocina(): Promise<ProductoCatalogo[]> {
   const mapaAjustes = new Map(ajustes.map(a => [a.productoId, a.datos]))
 
   return productos.map(p => {
-    const deducido = deducirProducto(p.nombre, p.datosUtiles)
-    let def = deducido.def
     const ajuste = mapaAjustes.get(p.id)
-    if (ajuste && def) {
-      try { def = { ...def, ...(JSON.parse(ajuste) as Partial<DefModulo>) } } catch { /* ajuste corrupto: se ignora */ }
-    }
+    const { grupo, def, combo } = definir(p, ajuste)
     return {
       id: p.id,
       nombre: p.nombre,
@@ -58,12 +78,30 @@ export async function catalogoCocina(): Promise<ProductoCatalogo[]> {
       precioLista: p.precio,
       imagen: primeraImagen(p.imagenes),
       subcategoria: p.subcategoria?.nombre ?? null,
-      grupo: deducido.grupo,
+      grupo,
       def,
-      combo: deducido.combo,
+      combo,
       ajustado: !!ajuste,
     }
   })
+}
+
+/**
+ * Precio vigente y medidas originales de los productos de un proyecto (aunque
+ * ya no estén activos), para calcular el presupuesto en el servidor.
+ */
+export async function referenciasProductos(ids: number[]): Promise<Map<number, RefProducto>> {
+  if (!ids.length) return new Map()
+  const productos = await prisma.producto.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, nombre: true, datosUtiles: true, precio: true, precioOferta: true },
+  })
+  const ajustes = await prisma.renderModulo.findMany({ where: { productoId: { in: ids } } })
+  const mapaAjustes = new Map(ajustes.map(a => [a.productoId, a.datos]))
+  return new Map(productos.map(p => {
+    const { def, combo } = definir(p, mapaAjustes.get(p.id))
+    return [p.id, { precio: p.precioOferta ?? p.precio, def, combo }]
+  }))
 }
 
 let sincronizado = false

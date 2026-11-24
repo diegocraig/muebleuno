@@ -5,10 +5,10 @@ import type {
   DatosProyecto, ElectroCatalogo, Escena, Item, Pared, Presupuesto, ProductoCatalogo, TipoEnvioOpcion, Ubicacion,
 } from '@/lib/render/tipos'
 import {
-  caja, combinarAnchos, elevacionPorDefecto, normalizarEscena, normalizarPresupuesto, esquinaPorDefecto, escenaInicial, imantar, largoPared, medidas, PRESUPUESTO_DEFAULT,
+  caja, combinarAnchos, defOriginal, elevacionPorDefecto, normalizarEscena, normalizarPresupuesto, esquinaPorDefecto, escenaInicial, imantar, largoPared, medidas, piezasDe, PRESUPUESTO_DEFAULT,
   primerHueco, productoPorAncho, topeMesada, transformar, uid,
 } from '@/lib/render/escena'
-import { preset } from '@/lib/render/materiales'
+import { preset, presetPorNombre } from '@/lib/render/materiales'
 import { NOMBRE_PARED } from '@/lib/render/tipos'
 import type { PresetDeco } from '@/lib/render/deco'
 
@@ -106,6 +106,36 @@ function itemDeProducto(p: ProductoCatalogo, def: NonNullable<ProductoCatalogo['
     ...(def.cuerpo ? { cuerpo: preset(def.cuerpo) } : {}),
     ...extra,
   }
+}
+
+/**
+ * Los muebles del catálogo siempre se dibujan con el diseño vigente de su producto
+ * (frentes, manijas, patas...): al abrir un proyecto guardado o al recargar el
+ * catálogo se les vuelve a copiar, conservando solo lo que es de ese proyecto
+ * (medidas, colores, ubicación). Devuelve la misma escena si no cambió nada.
+ */
+function sincronizarDisenos(esc: Escena, catalogo: ProductoCatalogo[]): Escena {
+  if (!catalogo.length) return esc
+  const refs = new Map(catalogo.map(p => [p.id, { precio: p.precio, def: p.def, combo: p.combo }]))
+  return produce(esc, e => {
+    for (const it of e.items) {
+      if (it.origen !== 'producto' || !it.modulo || !it.productoId) continue
+      const piezas = piezasDe(e, it)
+      const orig = defOriginal(it, refs.get(it.productoId), piezas)
+      if (!orig) continue
+      if (it.grupo && it.componente === undefined) it.componente = piezas.indexOf(it)
+      const { ancho, alto, profundidad } = it.modulo
+      const nuevo = { ...structuredClone(orig), ancho, alto, profundidad }
+      if (JSON.stringify(nuevo) !== JSON.stringify(current(it).modulo)) it.modulo = nuevo
+      // Los colores propios del mueble se eligen de la biblioteca de placas: si una
+      // placa se recalibró (ej. Gris basalto), se toma el valor vigente.
+      for (const k of ['frente', 'cuerpo'] as const) {
+        const m = it[k]
+        const vigente = m && !m.imagen ? presetPorNombre(m.nombre) : null
+        if (vigente && JSON.stringify(vigente) !== JSON.stringify(current(m))) it[k] = vigente
+      }
+    }
+  })
 }
 
 // ─── Esquinero automático ───────────────────────────────────────────────────
@@ -258,14 +288,14 @@ export const useRender = create<Estado>((set, get) => ({
   setArrastrando: arrastrando => set({ arrastrando }),
   setProyecto: p => set({ proyecto: { ...get().proyecto, ...p }, sucio: true }),
   setPresupuesto: fn => { const p = structuredClone(get().presupuesto); fn(p); set({ presupuesto: p, sucio: true }) },
-  setCatalogo: catalogo => set({ catalogo }),
+  setCatalogo: catalogo => set({ catalogo, escena: sincronizarDisenos(get().escena, catalogo) }),
   setElectros: electros => set({ electros }),
   avisar: (texto, tipo = 'ok') => {
     set({ aviso: { texto, tipo } })
     setTimeout(() => { if (get().aviso?.texto === texto) set({ aviso: null }) }, 3500)
   },
   cargar: (escena, presupuesto, proyecto) =>
-    set({ escena: normalizarEscena(escena), presupuesto: normalizarPresupuesto(presupuesto), proyecto, pasado: [], futuro: [], seleccion: null, sucio: false, camaraVersion: get().camaraVersion + 1 }),
+    set({ escena: sincronizarDisenos(normalizarEscena(escena), get().catalogo), presupuesto: normalizarPresupuesto(presupuesto), proyecto, pasado: [], futuro: [], seleccion: null, sucio: false, camaraVersion: get().camaraVersion + 1 }),
   nuevo: () => set({
     escena: escenaInicial(), presupuesto: { ...PRESUPUESTO_DEFAULT }, pasado: [], futuro: [], seleccion: null, sucio: false,
     proyecto: { nombre: 'Cocina nueva', cliente: '', email: '', telefono: '', estado: 'borrador' },
@@ -277,21 +307,29 @@ export const useRender = create<Estado>((set, get) => ({
     const { paredDestino } = get()
     if (p.combo) {
       const grupo = uid()
+      const combo = p.combo
+      // Corrimiento de cada pieza desde el inicio del combo: el de la ficha, o el bajo
+      // al inicio y las alacenas una al lado de la otra.
+      const pos = combo.posiciones ?? (() => { let s = 0; return combo.componentes.map((d, i) => { if (i === 0) return 0; const r = s; s += d.ancho; return r }) })()
+      const anchoTotal = Math.max(...combo.componentes.map((d, i) => pos[i] + d.ancho))
+      const nombrePieza = (i: number) => {
+        const t = combo.componentes[i].tipo
+        return i === 0 ? p.nombre : `${p.nombre} (${t === 'bajo' ? 'bajo' : t === 'alto' ? 'columna' : 'alacena'})`
+      }
       get().mutar(esc => {
-        const base = itemDeProducto(p, p.combo!.componentes[0], esc, { grupo })
-        // El hueco se busca para el ancho total del combo (el bajo o la fila de alacenas, lo que sea mayor).
-        const anchoAlacenas = p.combo!.componentes.slice(1).reduce((a, d) => a + d.ancho, 0)
-        const prueba: Item = { ...base, modulo: { ...base.modulo!, ancho: Math.max(base.modulo!.ancho, anchoAlacenas) } }
+        const base = itemDeProducto(p, combo.componentes[0], esc, { grupo, componente: 0 })
+        // El hueco se busca para el ancho total del combo.
+        const prueba: Item = { ...base, modulo: { ...base.modulo!, ancho: anchoTotal } }
         const lugar = ubicarNuevo(esc, prueba, paredDestino)
-        const ub: Item = { ...base, ubicacion: lugar.ubicacion, s: lugar.s, x: lugar.x, z: lugar.z, rot: lugar.rot }
+        const ub: Item = { ...base, ubicacion: lugar.ubicacion, s: lugar.s + pos[0], x: lugar.x, z: lugar.z, rot: lugar.rot }
         esc.items.push(ub)
-        let s = ub.s
-        p.combo!.componentes.slice(1).forEach(def => {
+        combo.componentes.forEach((def, i) => {
+          if (i === 0) return
           esc.items.push(itemDeProducto(p, def, esc, {
-            grupo, ubicacion: ub.ubicacion, s, x: ub.x, z: ub.z, rot: ub.rot, precio: 0, cuentaEnPresupuesto: false,
-            nombre: `${p.nombre} (alacena)`,
+            grupo, componente: i, ubicacion: ub.ubicacion, s: lugar.s + pos[i],
+            x: ub.x !== undefined ? ub.x + (pos[i] + def.ancho / 2) - (pos[0] + combo.componentes[0].ancho / 2) : undefined, z: ub.z, rot: ub.rot, precio: 0, cuentaEnPresupuesto: false,
+            nombre: nombrePieza(i),
           }))
-          s += def.ancho
         })
         set({ seleccion: ub.id, panel: 'seleccion' })
       })

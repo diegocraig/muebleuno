@@ -105,6 +105,7 @@ export default function PanelMateriales() {
   return (
     <div className="pb-6">
       <Seccion titulo="Tiradores">
+        <p className="text-xs text-gris-claro">Para los módulos a medida. Los productos del catálogo llevan siempre su manija original.</p>
         <Fila etiqueta="Estilo">
           <Selector valor={tir.estilo} opciones={TIRADORES} onCambio={v => mutar(e => { e.tirador.estilo = v })} />
         </Fila>

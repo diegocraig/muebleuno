@@ -1,5 +1,5 @@
 import type {
-  Abertura, DefElectro, DefModulo, Escena, Estandares, Item, Pared, ProductoCatalogo, Presupuesto, Ubicacion,
+  Abertura, Columna, DefCombo, DefElectro, DefModulo, Escena, Estandares, Item, MatDef, Pared, ProductoCatalogo, Presupuesto, Ubicacion,
 } from './tipos'
 import { preset } from './materiales'
 
@@ -487,7 +487,7 @@ export function productoPorAncho(catalogo: ProductoCatalogo[], grupo: 'bajo' | '
     const d = p.def!
     let s = 0
     if (d.frente) s += 5
-    if (d.columnas.some(c => ['micro', 'hueco', 'vidrio', 'rebatible'].includes(c.tipo))) s += 4
+    if (hojas(d.columnas).some(c => ['micro', 'hueco', 'vidrio', 'rebatible', 'botellero'].includes(c.tipo))) s += 4
     return s
   }
   for (const p of catalogo) {
@@ -500,30 +500,149 @@ export function productoPorAncho(catalogo: ProductoCatalogo[], grupo: 'bajo' | '
   return mapa
 }
 
+/** Celdas finales de un frente (aplana filas y columnas anidadas). */
+export function hojas(cols: Columna[]): Columna[] {
+  return cols.flatMap(c => (c.filas ? hojas(c.filas) : c.columnas ? hojas(c.columnas) : [c]))
+}
+
+// ─── Recargos por medida especial y color a elección ────────────────────────
+
+/** Adicional sobre el precio vigente cuando se cambia alguna medida de un mueble estándar. */
+export const RECARGO_MEDIDA = 0.15
+/** Adicional sobre el precio vigente cuando el mueble no va en blanco estándar (ni en su color de catálogo). */
+export const RECARGO_COLOR = 0.30
+
+/** Lo que hace falta de un producto para presupuestarlo: precio vigente y diseño/medidas originales. */
+export interface RefProducto { precio: number; def: DefModulo | null; combo: DefCombo | null }
+
+/** Piezas de un combo (o el ítem solo), en el orden en que se agregaron. */
+export function piezasDe(esc: Escena, it: Item): Item[] {
+  if (!it.grupo) return [it]
+  return esc.items.filter(o => o.grupo === it.grupo && o.origen === 'producto' && o.productoId === it.productoId)
+}
+
+/**
+ * Definición original del catálogo para una pieza. En combos, por el índice de
+ * componente; los combos guardados antes de tener ficha que no coinciden en
+ * cantidad de piezas no tienen referencia (null) y no se comparan.
+ */
+export function defOriginal(it: Item, ref: RefProducto | undefined, piezas: Item[]): DefModulo | null {
+  if (!ref) return null
+  if (!ref.combo) return ref.def
+  if (piezas.length !== ref.combo.componentes.length) return null
+  const i = it.componente ?? piezas.indexOf(it)
+  return ref.combo.componentes[i] ?? null
+}
+
+const distinto = (a: number, b: number) => Math.abs(a - b) > 0.05
+
+/** ¿Se cambió alguna medida (ancho, alto o profundidad) respecto del producto estándar? */
+export function medidaModificada(it: Item, orig: DefModulo | null): boolean {
+  if (!it.modulo || !orig) return false
+  return distinto(it.modulo.ancho, orig.ancho) || distinto(it.modulo.alto, orig.alto) || distinto(it.modulo.profundidad, orig.profundidad)
+}
+
+/**
+ * Mismo material de placa: mismo color y textura, o la misma placa de la biblioteca
+ * por nombre (así un proyecto guardado no cambia de precio si se recalibra el color
+ * de una placa). Una foto subida o un color personalizado siempre es otro material.
+ */
+export function mismoMaterial(a: MatDef, b: MatDef): boolean {
+  if (a.imagen || b.imagen) return false
+  if (a.textura === b.textura && a.color.toLowerCase() === b.color.toLowerCase()) return true
+  return a.nombre === b.nombre && a.textura === b.textura && a.nombre !== 'Personalizado'
+}
+
+/**
+ * ¿El mueble va en un color a elección? Es sin cargo el blanco estándar y, en los
+ * productos que el catálogo ya vende en color (línea Paraíso / Jade / Gris basalto),
+ * su propio color de catálogo. Cuenta tanto el frente como el cuerpo, y tanto el
+ * color propio del mueble como el general de la pestaña Materiales.
+ */
+export function colorAEleccion(it: Item, esc: Pick<Escena, 'materiales'>, orig: DefModulo | null): boolean {
+  if (!it.modulo) return false
+  const blanco = preset('blanco')
+  const libre = (m: MatDef, propio?: string) => mismoMaterial(m, blanco) || (!!propio && mismoMaterial(m, preset(propio)))
+  const frente = it.frente ?? esc.materiales.frentes
+  const cuerpo = it.cuerpo ?? esc.materiales.cuerpos
+  return !libre(frente, orig?.frente ?? it.modulo.frente) || !libre(cuerpo, orig?.cuerpo ?? it.modulo.cuerpo)
+}
+
+/** Recargos de un producto (en un combo, alcanza con que una pieza esté modificada). */
+export function recargosDe(esc: Escena, it: Item, ref: RefProducto | undefined): { medida: boolean; color: boolean } {
+  if (it.origen !== 'producto') return { medida: false, color: false }
+  const piezas = piezasDe(esc, it)
+  let medida = false, color = false
+  for (const pz of piezas) {
+    const orig = defOriginal(pz, ref, piezas)
+    if (medidaModificada(pz, orig)) medida = true
+    if (colorAEleccion(pz, esc, orig)) color = true
+  }
+  return { medida, color }
+}
+
+/** Precio unitario con los adicionales: ambos se calculan sobre el precio base, sin acumularse entre sí. */
+export function precioConRecargos(base: number, r: { medida: boolean; color: boolean }) {
+  const recargoMedida = r.medida ? Math.round(base * RECARGO_MEDIDA) : 0
+  const recargoColor = r.color ? Math.round(base * RECARGO_COLOR) : 0
+  return { recargoMedida, recargoColor, precio: base + recargoMedida + recargoColor }
+}
+
 // ─── Presupuesto ────────────────────────────────────────────────────────────
 
 export interface LineaPresupuesto {
   clave: string
   productoId?: number
+  /** Primer ítem de la escena que cae en esta línea (para mostrar sus medidas). */
+  itemId: string
   nombre: string
   cantidad: number
+  /** Precio unitario final (base + adicionales). */
   precio: number
+  /** Precio vigente del catálogo, sin adicionales. */
+  precioBase: number
+  /** Adicional por unidad por medida especial (15 %) y por color a elección (30 %). */
+  recargoMedida: number
+  recargoColor: number
   subtotal: number
   tipo: 'producto' | 'electro' | 'generico' | 'deco'
   incluido: boolean
 }
 
-export function lineasPresupuesto(esc: Escena, precios: Map<number, number>, pres: Presupuesto): LineaPresupuesto[] {
+/** Texto de los adicionales de una línea, para presupuestos y pedidos. */
+export function textoRecargos(l: Pick<LineaPresupuesto, 'recargoMedida' | 'recargoColor'>): string {
+  const partes: string[] = []
+  if (l.recargoMedida) partes.push(`medida especial +${Math.round(RECARGO_MEDIDA * 100)}%`)
+  if (l.recargoColor) partes.push(`color a elección +${Math.round(RECARGO_COLOR * 100)}%`)
+  return partes.join(', ')
+}
+
+export function lineasPresupuesto(esc: Escena, refs: Map<number, RefProducto>, pres: Presupuesto): LineaPresupuesto[] {
   const mapa = new Map<string, LineaPresupuesto>()
   for (const it of esc.items) {
     if (!it.cuentaEnPresupuesto) continue
     const tipo = it.origen
-    const clave = tipo === 'producto' ? `p${it.productoId}` : tipo === 'electro' ? `e${it.electroId ?? ''}|${it.nombre}|${it.precio}` : `g${it.nombre}|${it.precio}`
-    const precio = tipo === 'producto' ? (precios.get(it.productoId!) ?? it.precio) : it.precio
+    let clave: string
+    let base = it.precio
+    let rec = { recargoMedida: 0, recargoColor: 0, precio: it.precio }
+    if (tipo === 'producto') {
+      const ref = refs.get(it.productoId!)
+      base = ref?.precio ?? it.precio
+      const r = recargosDe(esc, it, ref)
+      rec = precioConRecargos(base, r)
+      clave = `p${it.productoId}|${r.medida ? 'm' : ''}${r.color ? 'c' : ''}`
+    } else {
+      clave = tipo === 'electro' ? `e${it.electroId ?? ''}|${it.nombre}|${it.precio}` : `g${it.nombre}|${it.precio}`
+    }
     const incluido = tipo !== 'electro' || pres.incluirElectros
     const l = mapa.get(clave)
     if (l) { l.cantidad++; l.subtotal = l.cantidad * l.precio }
-    else mapa.set(clave, { clave, productoId: it.productoId, nombre: it.nombre, cantidad: 1, precio, subtotal: precio, tipo, incluido })
+    else {
+      mapa.set(clave, {
+        clave, productoId: it.productoId, itemId: it.id, nombre: it.nombre, cantidad: 1, precio: rec.precio, precioBase: base,
+        recargoMedida: rec.recargoMedida, recargoColor: rec.recargoColor, subtotal: rec.precio, tipo, incluido,
+      })
+    }
   }
   return [...mapa.values()]
 }

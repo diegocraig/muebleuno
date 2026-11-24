@@ -3,7 +3,7 @@ import { useMemo } from 'react'
 import { AlertTriangle, Copy, ExternalLink, Lock, Plus, RotateCw, Save, Shuffle, Trash2, Undo2, Unlock, X } from 'lucide-react'
 import type { Columna, MatDef, TipoColumna, Ubicacion } from '@/lib/render/tipos'
 import { NOMBRE_ELECTRO, NOMBRE_PARED } from '@/lib/render/tipos'
-import { conflictos, largoPared, medidas } from '@/lib/render/escena'
+import { colorAEleccion, conflictos, defOriginal, largoPared, medidaModificada, medidas, piezasDe, precioConRecargos, recargosDe, RECARGO_COLOR, RECARGO_MEDIDA } from '@/lib/render/escena'
 import { MATERIALES_PRESET, PRESETS_POR_GRUPO, preset } from '@/lib/render/materiales'
 import { formatPrice, cn } from '@/lib/utils'
 import { useRender, useSeleccionado } from './store'
@@ -21,6 +21,7 @@ const TIPOS_COL: { valor: TipoColumna; texto: string }[] = [
   { valor: 'hueco', texto: 'Estante abierto' },
   { valor: 'bandejero', texto: 'Bandejero' },
   { valor: 'ciego', texto: 'Panel ciego' },
+  { valor: 'botellero', texto: 'Botellero' },
 ]
 
 function SelectorMaterial({ titulo, valor, opciones, onCambio }: { titulo: string; valor?: MatDef; opciones: string[]; onCambio: (m?: MatDef) => void }) {
@@ -70,6 +71,16 @@ export default function PanelSeleccion() {
 
   const producto = it.productoId ? catalogo.find(p => p.id === it.productoId) : undefined
   const mod = it.modulo
+  // Adicionales del producto (en un combo se calculan para el combo entero).
+  const ref = producto ? { precio: producto.precio, def: producto.def, combo: producto.combo } : undefined
+  const piezas = it.origen === 'producto' ? piezasDe(esc, it) : [it]
+  const lider = piezas.find(o => o.cuentaEnPresupuesto) ?? piezas[0]
+  const orig = it.origen === 'producto' ? defOriginal(it, ref, piezas) : null
+  const recargos = it.origen === 'producto' ? recargosDe(esc, lider, ref) : { medida: false, color: false }
+  const montos = precioConRecargos(ref?.precio ?? it.precio, recargos)
+  const estaModificada = medidaModificada(it, orig)
+  const estaEnColor = colorAEleccion(it, esc, orig)
+  const deCatalogo = it.origen === 'producto' && !!mod
   const L = it.ubicacion === 'libre' ? 0 : largoPared(esc, it.ubicacion)
   const ancho = medidas(it).ancho
   const ubicaciones: { valor: Ubicacion; texto: string }[] = (['fondo', 'izq', 'der', 'frente'] as const)
@@ -80,19 +91,20 @@ export default function PanelSeleccion() {
 
   const guardarComoProducto = async () => {
     if (!mod || !it.productoId) return
+    if (!confirm(`Esto cambia las medidas estándar de "${it.nombre}" a ${mod.ancho} × ${mod.alto} × ${mod.profundidad} cm en todos los proyectos, y con esas medidas deja de cobrarse el adicional por medida especial.\n\nUsalo solo si el producto real mide así. ¿Continuar?`)) return
     const r = await fetch(`/api/render/modulos/${it.productoId}`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tipo: mod.tipo, ancho: mod.ancho, alto: mod.alto, profundidad: mod.profundidad, columnas: mod.columnas }),
+      body: JSON.stringify({ ancho: mod.ancho, alto: mod.alto, profundidad: mod.profundidad }),
     })
     if (!r.ok) { avisar('No se pudo guardar el ajuste', 'error'); return }
-    setCatalogo(catalogo.map(p => p.id === it.productoId ? { ...p, def: { ...p.def!, ...mod }, ajustado: true } : p))
+    setCatalogo(catalogo.map(p => p.id === it.productoId ? { ...p, def: { ...p.def!, ancho: mod.ancho, alto: mod.alto, profundidad: mod.profundidad }, ajustado: true } : p))
     avisar('Medidas guardadas para este producto en todos los proyectos')
   }
   const restaurarProducto = async () => {
     if (!it.productoId) return
     const r = await fetch(`/api/render/modulos/${it.productoId}`, { method: 'DELETE' })
     if (!r.ok) { avisar('No se pudo borrar el ajuste', 'error'); return }
-    const deducido = deducirProducto(it.nombre).def
+    const deducido = deducirProducto(it.nombre, undefined, it.productoId).def
     setCatalogo(catalogo.map(p => p.id === it.productoId ? { ...p, def: deducido ?? p.def, ajustado: false } : p))
     if (deducido) actualizar(it.id, x => { x.modulo = { ...deducido } })
     avisar('Listo: el producto volvió a las medidas deducidas de su nombre')
@@ -148,6 +160,16 @@ export default function PanelSeleccion() {
             <Fila etiqueta="Ancho"><Numero valor={mod.ancho} min={10} max={400} onCambio={v => actualizar(it.id, x => { x.modulo!.ancho = v })} /></Fila>
             <Fila etiqueta="Alto"><Numero valor={mod.alto} min={10} max={300} onCambio={v => actualizar(it.id, x => { x.modulo!.alto = v })} /></Fila>
             <Fila etiqueta="Profundidad"><Numero valor={mod.profundidad} min={10} max={120} onCambio={v => actualizar(it.id, x => { x.modulo!.profundidad = v })} /></Fila>
+            {deCatalogo && orig && (estaModificada ? (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900">
+                <p><strong>Medida especial: +{Math.round(RECARGO_MEDIDA * 100)}%</strong>{it.grupo ? ' sobre el combo' : ''} ({formatPrice(montos.recargoMedida)}). Estándar: {orig.ancho} × {orig.alto} × {orig.profundidad} cm.</p>
+                <button type="button" className="mt-1 font-semibold underline" onClick={() => actualizar(it.id, x => { x.modulo!.ancho = orig.ancho; x.modulo!.alto = orig.alto; x.modulo!.profundidad = orig.profundidad })}>
+                  Volver a la medida estándar
+                </button>
+              </div>
+            ) : (
+              <p className="text-xs text-gris-claro">Medida estándar. Cambiarla suma un {Math.round(RECARGO_MEDIDA * 100)}% al precio.</p>
+            ))}
           </>
         ) : it.deco ? (
           <EditorDeco />
@@ -167,7 +189,24 @@ export default function PanelSeleccion() {
         )}
       </Seccion>
 
-      {mod && (
+      {deCatalogo && (
+        <Seccion titulo="Diseño">
+          <div className="flex gap-3">
+            {producto?.imagen && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={producto.imagen} alt={it.nombre} className="h-24 w-24 shrink-0 rounded-md border border-gray-100 object-contain" />
+            )}
+            <p className="text-xs text-gris-medio">
+              {mod!.ficha
+                ? 'Puertas, cajones, huecos y manijas como en la foto del catálogo.'
+                : 'Diseño deducido del nombre del producto (todavía sin ficha relevada de la foto).'}
+              {' '}Al cambiar medidas o colores el diseño se mantiene.
+            </p>
+          </div>
+        </Seccion>
+      )}
+
+      {mod && !deCatalogo && (
         <Seccion titulo="Frentes" accion={
           <button type="button" className="text-xs font-semibold text-rojo-principal" onClick={() => actualizar(it.id, x => { x.modulo!.columnas.push({ tipo: 'puerta' }) })}>
             <Plus className="inline h-3 w-3" /> columna
@@ -195,6 +234,18 @@ export default function PanelSeleccion() {
         <Seccion titulo="Colores de este mueble">
           <SelectorMaterial titulo="Frente" valor={it.frente} opciones={PRESETS_POR_GRUPO.frentes} onCambio={m => actualizar(it.id, x => { x.frente = m })} />
           <SelectorMaterial titulo="Cuerpo" valor={it.cuerpo} opciones={PRESETS_POR_GRUPO.cuerpos} onCambio={m => actualizar(it.id, x => { x.cuerpo = m })} />
+          {deCatalogo && (estaEnColor || (recargos.color && it.grupo) ? (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900">
+              <p><strong>Color a elección: +{Math.round(RECARGO_COLOR * 100)}%</strong>{it.grupo ? ' sobre el combo' : ''} ({formatPrice(montos.recargoColor)}). Sin cargo: blanco estándar{mod!.frente || mod!.cuerpo ? ' o el color de catálogo del producto' : ''}.</p>
+              {estaEnColor && (
+                <button type="button" className="mt-1 font-semibold underline" onClick={() => actualizar(it.id, x => { x.frente = preset(mod!.frente ?? 'blanco'); x.cuerpo = preset(mod!.cuerpo ?? 'blanco') })}>
+                  Volver al color estándar
+                </button>
+              )}
+            </div>
+          ) : (
+            <p className="text-xs text-gris-claro">Color estándar. Otro color suma un {Math.round(RECARGO_COLOR * 100)}% al precio.</p>
+          ))}
         </Seccion>
       )}
 
@@ -204,6 +255,14 @@ export default function PanelSeleccion() {
         )}
         {it.origen !== 'producto' && (
           <Fila etiqueta="Precio unitario"><Numero valor={it.precio} min={0} sufijo="$" ancho="w-28" onCambio={v => actualizar(it.id, x => { x.precio = v })} /></Fila>
+        )}
+        {deCatalogo && ref && (
+          <div className="space-y-0.5 text-xs text-gris-medio">
+            <div className="flex justify-between"><span>Precio base{it.grupo ? ' del combo' : ''}</span><span className="tabular-nums">{formatPrice(ref.precio)}</span></div>
+            {montos.recargoMedida > 0 && <div className="flex justify-between"><span>Medida especial (+{Math.round(RECARGO_MEDIDA * 100)}%)</span><span className="tabular-nums">{formatPrice(montos.recargoMedida)}</span></div>}
+            {montos.recargoColor > 0 && <div className="flex justify-between"><span>Color a elección (+{Math.round(RECARGO_COLOR * 100)}%)</span><span className="tabular-nums">{formatPrice(montos.recargoColor)}</span></div>}
+            <div className="flex justify-between font-semibold text-gris-oscuro"><span>Precio final</span><span className="tabular-nums">{formatPrice(montos.precio)}</span></div>
+          </div>
         )}
         {it.grupo && <p className="text-xs text-gris-medio">Es parte de un combo: se mueve y se borra junto con sus otras piezas.</p>}
       </Seccion>
@@ -215,9 +274,9 @@ export default function PanelSeleccion() {
       </div>
       {it.origen === 'producto' && mod && !it.grupo && !producto?.combo && (
         <div className="mt-3 space-y-1 border-t border-gray-100 px-4 pt-3">
-          <p className="text-xs text-gris-medio">Los cambios de medidas y frentes valen solo para este proyecto. Si el producto real es así, guardalo para todos:</p>
+          <p className="text-xs text-gris-medio">Los cambios de medidas valen solo para este proyecto (y suman el adicional por medida especial). Si las medidas reales del producto son otras, corregilas para todos los proyectos:</p>
           <div className="flex flex-wrap gap-2">
-            <Boton onClick={guardarComoProducto}><Save className="h-4 w-4" /> Guardar en el producto</Boton>
+            <Boton onClick={guardarComoProducto}><Save className="h-4 w-4" /> Guardar medidas en el producto</Boton>
             {producto?.ajustado && <Boton variante="fantasma" onClick={restaurarProducto}><Undo2 className="h-4 w-4" /> Volver a lo deducido</Boton>}
           </div>
         </div>

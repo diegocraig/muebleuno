@@ -1,5 +1,6 @@
 import type { Columna, DefCombo, DefModulo, ProductoCatalogo, TipoModulo } from './tipos'
 import { coloresDesdeNombre } from './materiales'
+import { FICHAS, FICHAS_COMBO } from './disenos'
 
 // Deduce cómo dibujar un producto del catálogo a partir de su nombre
 // ("Alacena 80 x 60 portamicroondas", "Bajo mesada 1,20 con cajonera"...) y,
@@ -122,8 +123,43 @@ function modulo(nombre: string, tipo: TipoModulo, ancho: number, alto: number, p
 
 export type Grupo = ProductoCatalogo['grupo']
 
+/**
+ * Detalles constructivos comunes a las líneas de fábrica, para los productos que
+ * todavía no tienen ficha relevada (disenos.ts): manija barra negra horizontal y
+ * patas cromadas en la línea blanca, uñero y patas de aluminio en la línea de color,
+ * arco cromado y patas negras en despenseros.
+ */
+export function detallesDeLinea(def: DefModulo): DefModulo {
+  const color = !!def.frente
+  const bajo = def.tipo === 'bajo' || def.tipo === 'esquinero-bajo'
+  if (def.tipo === 'alto') return { tirador: 'arco-cromo', patas: 'negra', ...def }
+  if (color) return { tirador: 'unero', embutido: true, ...(bajo ? { patas: 'aluminio' as const, travesano: true } : {}), ...def }
+  return { tirador: 'barra-negra', ...(bajo ? { patas: 'cromo' as const, travesano: true } : {}), ...def }
+}
+
 /** Resultado de interpretar un producto: un módulo simple, un combo, o nada. */
 export function deducirProducto(
+  nombre: string,
+  datosUtiles?: string | null,
+  productoId?: number,
+): { grupo: Grupo; def: DefModulo | null; combo: DefCombo | null } {
+  const r = deducirDelNombre(nombre, datosUtiles)
+  const ficha = productoId ? FICHAS[productoId] : undefined
+  const fichaCombo = productoId ? FICHAS_COMBO[productoId] : undefined
+  if (r.def) r.def = ficha ? { ...r.def, ...ficha, ficha: true } : detallesDeLinea(r.def)
+  if (r.combo) {
+    if (fichaCombo) {
+      const colores = coloresDesdeNombre(nombre)
+      const c = fichaCombo(ESTANDAR.altoBajo, ESTANDAR.altoAlacena)
+      r.combo = { ...c, componentes: c.componentes.map(x => ({ ...colores, ...x })) }
+    } else {
+      r.combo = { componentes: r.combo.componentes.map(detallesDeLinea) }
+    }
+  }
+  return r
+}
+
+function deducirDelNombre(
   nombre: string,
   datosUtiles?: string | null,
 ): { grupo: Grupo; def: DefModulo | null; combo: DefCombo | null } {

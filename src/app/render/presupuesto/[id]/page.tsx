@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import Image from 'next/image'
 import { prisma } from '@/lib/prisma'
-import { exigirAdmin } from '@/lib/render/servidor'
+import { exigirAdmin, referenciasProductos } from '@/lib/render/servidor'
 import { lineasPresupuesto, metrosMesada, normalizarEscena, normalizarPresupuesto, totalesPresupuesto, medidas } from '@/lib/render/escena'
 import type { Escena, Presupuesto } from '@/lib/render/tipos'
 import { formatPrice } from '@/lib/utils'
@@ -16,9 +16,8 @@ export default async function PresupuestoPage({ params }: { params: Promise<{ id
   const esc = normalizarEscena(JSON.parse(p.datos) as Escena)
   const pres: Presupuesto = normalizarPresupuesto(JSON.parse(p.presupuesto || '{}'))
   const ids = [...new Set(esc.items.map(i => i.productoId).filter((x): x is number => !!x))]
-  const productos = await prisma.producto.findMany({ where: { id: { in: ids } }, select: { id: true, precio: true, precioOferta: true } })
-  const precios = new Map(productos.map(x => [x.id, x.precioOferta ?? x.precio]))
-  const lineas = lineasPresupuesto(esc, precios, pres)
+  const refs = await referenciasProductos(ids)
+  const lineas = lineasPresupuesto(esc, refs, pres)
   // Mismo criterio que la venta: un envío desactivado no se cobra.
   const envio = pres.tipoEnvioId ? await prisma.tipoEnvio.findFirst({ where: { id: pres.tipoEnvioId, activo: true } }) : null
   const metros = metrosMesada(esc)
@@ -26,8 +25,8 @@ export default async function PresupuestoPage({ params }: { params: Promise<{ id
   const conf = await prisma.configuracion.findUnique({ where: { id: 1 } })
   const fecha = p.actualizadoEn
   const vence = new Date(fecha.getTime() + pres.validezDias * 86400000)
-  const dims = (nombre: string) => {
-    const it = esc.items.find(i => i.nombre === nombre && i.cuentaEnPresupuesto)
+  const dims = (itemId: string) => {
+    const it = esc.items.find(i => i.id === itemId)
     if (!it) return ''
     const m = medidas(it)
     return `${m.ancho} × ${m.alto} × ${m.prof} cm`
@@ -77,7 +76,15 @@ export default async function PresupuestoPage({ params }: { params: Promise<{ id
             {lineas.filter(l => l.incluido).map(l => (
               <tr key={l.clave}>
                 <td className="py-2 align-top font-semibold">{l.cantidad}</td>
-                <td className="py-2">{l.nombre}<span className="block text-xs text-gris-claro">{dims(l.nombre)}</span></td>
+                <td className="py-2">{l.nombre}<span className="block text-xs text-gris-claro">{dims(l.itemId)}</span>
+                  {(l.recargoMedida > 0 || l.recargoColor > 0) && (
+                    <span className="block text-xs text-gris-medio">
+                      Precio base {formatPrice(l.precioBase)}
+                      {l.recargoMedida > 0 && <> · adicional medida especial (15%) {formatPrice(l.recargoMedida)}</>}
+                      {l.recargoColor > 0 && <> · adicional color a elección (30%) {formatPrice(l.recargoColor)}</>}
+                    </span>
+                  )}
+                </td>
                 <td className="py-2 text-right align-top tabular-nums">{formatPrice(l.precio)}</td>
                 <td className="py-2 text-right align-top tabular-nums">{formatPrice(l.subtotal)}</td>
               </tr>

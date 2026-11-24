@@ -27,12 +27,45 @@ export type TipoColumna =
   | 'rebatible'   // puerta rebatible (abre hacia arriba)
   | 'bandejero'   // frente extraíble angosto (especiero / bandejero)
   | 'ciego'       // panel fijo sin tirador
+  | 'botellero'   // fila de casilleros abiertos (botellero / especiero sobre el microondas)
 
+/** Dónde va la manija de un frente, cuando no sigue la regla general del producto. */
+export interface PosTirador {
+  orient?: 'h' | 'v'
+  pos?: 'arriba' | 'abajo' | 'medio'
+  lado?: 'izq' | 'der' | 'centro'
+}
+
+/**
+ * Una celda del frente. Las columnas de primer nivel parten el ancho del mueble
+ * de izquierda a derecha; una celda con `filas` se parte de arriba hacia abajo y
+ * una con `columnas` vuelve a partirse a lo ancho (en esos dos casos `tipo` no se usa).
+ */
 export interface Columna {
   tipo: TipoColumna
   ancho?: number      // cm; sin valor = reparte el ancho restante
   cajones?: number    // solo para 'cajones'
+  alto?: number       // cm, dentro de `filas`; sin valor = reparte el alto restante
+  filas?: Columna[]
+  columnas?: Columna[]
+  /** Lado de las bisagras de una puerta (si no, se deduce por su posición). */
+  bisagra?: 'izq' | 'der'
+  /** Estantes intermedios de un hueco abierto (0 = un solo nicho). */
+  estantes?: number
+  /** Casilleros de un botellero. */
+  divisiones?: number
+  /** Proporción del alto de cada cajón, de arriba hacia abajo (ej. [1, 1, 2]). */
+  alturas?: number[]
+  /** Marco de una puerta vidriada: de la misma placa del frente o de aluminio. */
+  marco?: 'frente' | 'aluminio'
+  /** Usa el color de acento del producto (fondo del recuadro, frentes de otro color). */
+  acento?: boolean
+  tirador?: PosTirador
 }
+
+/** Manija real del producto. Sin valor, el mueble usa el tirador elegido para el ambiente. */
+export type ModeloTirador = 'barra-negra' | 'arco-cromo' | 'unero' | 'ninguno'
+export type TipoPatas = 'cromo' | 'negra' | 'aluminio'
 
 export interface DefModulo {
   tipo: TipoModulo
@@ -45,11 +78,27 @@ export interface DefModulo {
   cuerpo?: string
   /** El producto (combo) incluye mesada de granito: se dibuja aunque esté desactivada. */
   conMesada?: boolean
+  /** Manija del producto (modelo; la orientación y posición salen de reglas por tipo de frente). */
+  tirador?: ModeloTirador
+  /** Patas a la vista en lugar de zócalo. */
+  patas?: TipoPatas
+  /** Bajos: listón frontal del cuerpo arriba de los frentes. */
+  travesano?: boolean
+  /** Frentes embutidos dentro del cuerpo (se ven los cantos de los laterales). */
+  embutido?: boolean
+  /** Esquineros: frentes del brazo contra la pared y del brazo perpendicular, desde el extremo hacia el rincón. */
+  columnasB?: Columna[]
+  /** Color de acento (id de MATERIALES_PRESET) para las celdas con `acento`. */
+  acento?: string
+  /** El diseño fue relevado de la foto del catálogo (no deducido del nombre). */
+  ficha?: boolean
 }
 
 /** Un combo del catálogo se despliega en varios módulos agrupados. */
 export interface DefCombo {
   componentes: DefModulo[]
+  /** Corrimiento (cm) de cada componente desde el inicio del combo; sin valor, las alacenas van una al lado de la otra. */
+  posiciones?: number[]
 }
 
 // ─── Electrodomésticos ──────────────────────────────────────────────────────
@@ -191,6 +240,8 @@ export interface Item {
   precio: number
   /** Ítems de un mismo combo comparten grupo; solo el primero lleva el precio. */
   grupo?: string
+  /** Combos: índice del componente del producto que representa esta pieza. */
+  componente?: number
   cuentaEnPresupuesto: boolean
   modulo?: DefModulo
   electro?: DefElectro
