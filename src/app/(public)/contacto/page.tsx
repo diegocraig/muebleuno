@@ -84,7 +84,7 @@ export default function ContactoPage() {
               rel="noopener noreferrer"
               className="inline-flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-semibold px-5 py-3 rounded-lg transition-colors"
             >
-              <MessageCircle className="w-4 h-4" /> Facundo
+              <MessageCircle className="w-4 h-4" /> WhatsApp 1
             </a>
             <a
               href="https://wa.me/5491173670283?text=Hola, quiero consultar sobre sus productos"
@@ -92,7 +92,7 @@ export default function ContactoPage() {
               rel="noopener noreferrer"
               className="inline-flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-semibold px-5 py-3 rounded-lg transition-colors"
             >
-              <MessageCircle className="w-4 h-4" /> Facundo
+              <MessageCircle className="w-4 h-4" /> WhatsApp 2
             </a>
           </div>
         </div>
