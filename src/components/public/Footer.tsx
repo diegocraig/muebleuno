@@ -89,7 +89,7 @@ export default async function Footer() {
                   className="inline-flex items-center gap-1.5 text-xs hover:text-white transition-colors"
                 >
                   <span className="w-1.5 h-1.5 rounded-full bg-green-400 shrink-0"></span>
-                  Irupé: 11 2648-4463
+                  Facundo: 11 2648-4463
                 </a>
                 <a
                   href="https://wa.me/5491173670283?text=Hola, quiero consultar sobre sus productos"

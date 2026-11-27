@@ -51,7 +51,7 @@ export default function ContactoPage() {
                     className="flex items-center gap-2 text-gris-medio hover:text-green-600 transition-colors"
                   >
                     <span className="inline-block w-2 h-2 rounded-full bg-green-500 shrink-0"></span>
-                    Irupé: 11 2648-4463
+                    Facundo: 11 2648-4463
                   </a>
                   <a
                     href="https://wa.me/5491173670283?text=Hola, quiero consultar sobre sus productos"
@@ -84,7 +84,7 @@ export default function ContactoPage() {
               rel="noopener noreferrer"
               className="inline-flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-semibold px-5 py-3 rounded-lg transition-colors"
             >
-              <MessageCircle className="w-4 h-4" /> Irupé
+              <MessageCircle className="w-4 h-4" /> Facundo
             </a>
             <a
               href="https://wa.me/5491173670283?text=Hola, quiero consultar sobre sus productos"
