@@ -80,7 +80,7 @@ export default async function Footer() {
               </a>
             </li>
             <li className="pt-1">
-              <p className="text-xs text-gris-claro/70 mb-1.5">WhatsApp:</p>
+              <p className="text-xs text-gris-claro/70 mb-1.5">WhatsApp · Facundo</p>
               <div className="flex flex-col gap-1.5">
                 <a
                   href="https://wa.me/5491126484463?text=Hola, quiero consultar sobre sus productos"
@@ -89,7 +89,7 @@ export default async function Footer() {
                   className="inline-flex items-center gap-1.5 text-xs hover:text-white transition-colors"
                 >
                   <span className="w-1.5 h-1.5 rounded-full bg-green-400 shrink-0"></span>
-                  Facundo: 11 2648-4463
+                  11 2648-4463
                 </a>
                 <a
                   href="https://wa.me/5491173670283?text=Hola, quiero consultar sobre sus productos"
@@ -98,7 +98,7 @@ export default async function Footer() {
                   className="inline-flex items-center gap-1.5 text-xs hover:text-white transition-colors"
                 >
                   <span className="w-1.5 h-1.5 rounded-full bg-green-400 shrink-0"></span>
-                  Facundo: 11 7367-0283
+                  11 7367-0283
                 </a>
               </div>
             </li>

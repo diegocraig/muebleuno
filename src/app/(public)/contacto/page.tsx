@@ -41,7 +41,7 @@ export default function ContactoPage() {
             <div className="flex items-start gap-3">
               <MessageCircle className="w-5 h-5 text-rojo-principal mt-0.5 shrink-0" />
               <div>
-                <p className="font-medium mb-1">WhatsApp</p>
+                <p className="font-medium mb-1">WhatsApp · Facundo</p>
                 <p className="text-xs text-gris-claro mb-2">Solo habilitados para mensajes</p>
                 <div className="space-y-2">
                   <a
@@ -51,7 +51,7 @@ export default function ContactoPage() {
                     className="flex items-center gap-2 text-gris-medio hover:text-green-600 transition-colors"
                   >
                     <span className="inline-block w-2 h-2 rounded-full bg-green-500 shrink-0"></span>
-                    Facundo: 11 2648-4463
+                    11 2648-4463
                   </a>
                   <a
                     href="https://wa.me/5491173670283?text=Hola, quiero consultar sobre sus productos"
@@ -60,7 +60,7 @@ export default function ContactoPage() {
                     className="flex items-center gap-2 text-gris-medio hover:text-green-600 transition-colors"
                   >
                     <span className="inline-block w-2 h-2 rounded-full bg-green-500 shrink-0"></span>
-                    Facundo: 11 7367-0283
+                    11 7367-0283
                   </a>
                 </div>
               </div>
